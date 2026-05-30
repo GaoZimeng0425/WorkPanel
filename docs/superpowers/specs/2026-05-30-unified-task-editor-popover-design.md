@@ -128,3 +128,42 @@ enum Mode {
 8. 看板卡片点击弹 popover 与拖拽移动列互不干扰（实跑验证）。
 9. 点击卡片完成圆圈 / `⋯` 菜单不会弹出编辑 popover。
 10. `CaptureView` 与看板列底 `+ 添加任务` 行为不变。
+
+---
+
+## 修订 v2（2026-05-31）— 改用捕获面板，废弃 popover
+
+实现并验收 popover 方案后，决定改变呈现方式：**创建和编辑统一走"捕获面板"**（`PanelController` 居中浮窗，快捷键 `⌘⌥J`，设置中名为"捕获面板"），不再用贴卡片的小 popover。本节内容**取代**上文的"呈现方式（popover）""触发入口""编辑模式实时保存"以及 v1 验收标准第 1/2/8/9 条；下列保持有效：状态=看板列、字段定义、`BoardStore.setColumn`、`TaskFormFields`、`CreateEditor` 落库逻辑。
+
+### 仍复用
+- `BoardStore.setColumn(_:to:)`、`TaskFormFields`（结构化字段布局）原样保留。
+
+### 呈现
+- 统一编辑器在**捕获面板**（`PanelController`）中呈现，沿用捕获面板样式（≈560 宽、`ultraThinMaterial`）。
+- `⌘↩` 保存、`esc` 取消。**创建与编辑都显式保存**（取代 v1 编辑模式的"实时自动保存"——形态变了，大面板里显式保存更自然）。编辑时 `esc` = 丢弃改动。
+- 暂不做自然语言解析：标题为普通 `TextField`（NL 解析为可选项，留待以后）。
+
+### 编辑模式
+- 编辑器与列表/看板共用 `SharedModel.container` 主上下文，因此卡片点击可直接把该 `TodoTask` 传入面板编辑（同一对象，`@Bindable` 有效）。
+- 保存：写回字段 → 改状态走 `BoardStore.setColumn` → `context.save()` → `scheduler.schedule(for:)`。
+
+### 触发入口
+- 卡片在 `TaskListView`/`BoardView`，捕获面板归 `AppDelegate` 管。新增 `Notification.Name.openTaskEditor`，object 携带请求载荷（`enum TaskEditorRequest { case create(columnID: UUID?); case edit(TodoTask) }`）。`AppDelegate` 收到后 `panel.show` 统一编辑器。
+- `⌘⌥J`（现有 `toggleCapture`）→ 创建模式（`columnID = nil`）。**取代纯自然语言 `CaptureView`**；`CaptureView` 因此成为孤儿，删除。
+- 列表头 `+` / 看板列头 `+` → 发 `.openTaskEditor`：创建（看板预选该列）。
+- 点卡片（列表/看板）主体 → 发 `.openTaskEditor`：编辑该任务。
+- 看板卡片**顶部加一条拖动区**：拖动条 = `.draggable` 移动列；卡片主体点击 = 编辑。彻底分开点击与拖拽（解决 v1 第 8 条风险）。
+
+### 移除
+- `TaskEditPopover` 修饰符、`CreateTaskButton` 的 popover 形式、卡片上的 `.taskEditPopover` 接线、列表/看板里 popover 形式的 `+` 按钮。
+- `CaptureView.swift`（被统一编辑器取代后成为孤儿）。
+
+### 修订验收标准
+1. `⌘⌥J` → 打开捕获面板，显示空白创建编辑器（含状态选择器，默认无状态）。
+2. 点列表/看板卡片主体 → 打开捕获面板，预填该任务全部字段。
+3. 编辑改字段后 `⌘↩` → 落库；再次打开值已更新。`esc` → 不保存改动。
+4. 编辑改截止时间并保存 → 通知按新时间调度（旧的取消）。
+5. 编辑改状态并保存 → 任务出现在对应看板列。
+6. 列表头 `+` → 创建（默认无状态）；看板列头 `+` → 创建（预选该列）；填标题 `⌘↩` → 出现在所选状态；标题空时保存无效果。
+7. 看板卡片：拖顶部拖动条 = 移动列；点卡片主体 = 打开编辑器；点完成圆圈 = 完成；二者互不误触。
+8. 看板列底 `+ 添加任务` 内联输入框行为不变。
