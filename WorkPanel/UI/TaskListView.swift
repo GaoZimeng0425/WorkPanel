@@ -16,6 +16,7 @@ struct TaskListView: View {
     @State private var showSettings = false
 
     private var store: TodoStore { TodoStore(context: context) }
+    private let scheduler = ReminderScheduler()
 
     private var visibleTasks: [TodoTask] {
         let now = Date.now
@@ -100,7 +101,7 @@ struct TaskListView: View {
     private func row(_ task: TodoTask) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Button {
-                store.complete(task); try? context.save()
+                complete(task)
             } label: {
                 Image(systemName: "circle")
             }
@@ -134,7 +135,10 @@ struct TaskListView: View {
                 Button("推迟到明天") { snooze(task, days: 1) }
                 Button("推迟到下周") { snooze(task, days: 7) }
                 Divider()
-                Button("删除", role: .destructive) { store.delete(task); try? context.save() }
+                Button("删除", role: .destructive) {
+                    scheduler.cancel(for: task)
+                    store.delete(task); try? context.save()
+                }
             } label: {
                 Image(systemName: "ellipsis")
             }
@@ -159,6 +163,15 @@ struct TaskListView: View {
         .buttonStyle(.borderless)
         .font(.system(size: 12))
         .padding(10)
+    }
+
+    private func complete(_ task: TodoTask) {
+        let next = store.complete(task)
+        try? context.save()
+        scheduler.cancel(for: task)
+        if let next {
+            Task { await scheduler.schedule(for: next) }
+        }
     }
 
     private func snooze(_ task: TodoTask, days: Int) {

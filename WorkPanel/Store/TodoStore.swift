@@ -22,20 +22,26 @@ final class TodoStore {
         return task
     }
 
-    func complete(_ task: TodoTask, now: Date = .now, calendar: Calendar = .current) {
+    /// Marks `task` complete. If it recurs, inserts and returns the next occurrence (so the
+    /// caller can schedule its reminder); otherwise returns nil.
+    @discardableResult
+    func complete(_ task: TodoTask, now: Date = .now, calendar: Calendar = .current) -> TodoTask? {
+        var follow: TodoTask?
         if let rule = task.recurrence,
            let next = Self.nextDeadline(after: task.deadline ?? now, rule: rule, calendar: calendar) {
-            let follow = TodoTask(title: task.title,
-                                  notes: task.notes,
-                                  deadline: next,
-                                  priority: task.priority,
-                                  tags: task.tags,
-                                  recurrence: rule,
-                                  createdAt: now)
-            context.insert(follow)
+            let occurrence = TodoTask(title: task.title,
+                                      notes: task.notes,
+                                      deadline: next,
+                                      priority: task.priority,
+                                      tags: task.tags,
+                                      recurrence: rule,
+                                      createdAt: now)
+            context.insert(occurrence)
+            follow = occurrence
         }
         task.isCompleted = true
         task.completedAt = now
+        return follow
     }
 
     func reopen(_ task: TodoTask) {
