@@ -67,6 +67,9 @@ struct TaskListView: View {
             }
             .menuStyle(.borderlessButton)
             .frame(width: 28)
+
+            CreateTaskButton(columnID: nil)
+                .frame(width: 28)
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
     }
@@ -119,6 +122,7 @@ struct TaskListView: View {
             .menuStyle(.borderlessButton)
             .frame(width: 24)
         }
+        .taskEditPopover(task)
     }
 
     private var footer: some View {
