@@ -115,4 +115,18 @@ struct BoardStoreTests {
         store.move(c, to: col.id, at: 0)
         #expect([c.boardOrder, a.boardOrder, b.boardOrder] == ([0, 1, 2] as [Int]))
     }
+
+    @Test func moveWithinColumnDownwardInsertsBeforeTarget() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let col = store.columns().first!
+        let a = TodoTask(title: "A"); a.columnID = col.id; a.boardOrder = 0
+        let b = TodoTask(title: "B"); b.columnID = col.id; b.boardOrder = 1
+        let c = TodoTask(title: "C"); c.columnID = col.id; c.boardOrder = 2
+        [a, b, c].forEach { store.context.insert($0) }
+
+        store.move(a, to: col.id, at: 2)   // 把 A 拖到 C 的位置(向下)
+        // 期望 insert-before C: [B, A, C]
+        #expect([b.boardOrder, a.boardOrder, c.boardOrder] == ([0, 1, 2] as [Int]))
+    }
 }

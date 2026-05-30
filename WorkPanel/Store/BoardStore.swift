@@ -64,14 +64,19 @@ final class BoardStore {
         context.delete(column)
     }
 
-    /// 把 task 放到目标列的第 index 位,并把该列未完成任务的 boardOrder 重排为 0,1,2,…
+    /// 把 task 放到目标列「第 index 个卡片之前」(insert-before),并把该列未完成任务的
+    /// boardOrder 重排为 0,1,2,…。同列向下移动时,移除自身后目标索引需前移一位。
     func move(_ task: TodoTask, to columnID: UUID, at index: Int) {
+        let movingWithinColumn = (task.columnID == columnID)
+        let oldOrder = task.boardOrder
         task.columnID = columnID
         var siblings = ((try? context.fetch(FetchDescriptor<TodoTask>())) ?? [])
             .filter { !$0.isCompleted && $0.columnID == columnID && $0.id != task.id }
             .sorted { $0.boardOrder < $1.boardOrder }
-        let clamped = max(0, min(index, siblings.count))
-        siblings.insert(task, at: clamped)
+        var target = index
+        if movingWithinColumn && oldOrder < index { target -= 1 }
+        target = max(0, min(target, siblings.count))
+        siblings.insert(task, at: target)
         for (i, t) in siblings.enumerated() { t.boardOrder = i }
     }
 }
