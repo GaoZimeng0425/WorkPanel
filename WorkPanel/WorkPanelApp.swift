@@ -40,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.registerBoard { [weak self] in self?.toggleBoard() }
         HotkeyManager.registerSettings { [weak self] in self?.toggleSettings() }
         NotificationCenter.default.addObserver(forName: .openSettings, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.toggleSettings() }
+            MainActor.assumeIsolated { self?.toggleSettings() }
         }
         Task { _ = await scheduler.requestAuthorization() }
     }
