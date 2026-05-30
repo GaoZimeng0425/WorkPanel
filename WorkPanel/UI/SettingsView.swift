@@ -36,9 +36,9 @@ struct SettingsView: View {
                         (Appearance(rawValue: raw) ?? .system).apply()
                     }
                     Picker("新任务默认优先级", selection: $defaultPriority) {
-                        Text("高").tag(Priority.high.rawValue)
-                        Text("中").tag(Priority.medium.rawValue)
-                        Text("低").tag(Priority.low.rawValue)
+                        ForEach(Priority.allCases.reversed(), id: \.rawValue) {
+                            Text(Theme.priorityLabel($0)).tag($0.rawValue)
+                        }
                     }
                 }
 
