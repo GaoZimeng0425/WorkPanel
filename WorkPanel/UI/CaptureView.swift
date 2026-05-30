@@ -44,6 +44,8 @@ struct CaptureView: View {
         }
         .padding(18)
         .frame(width: 560)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.panelRadius))
         .onAppear { focus = .title }
         .onKeyPress(.escape) { onCancel(); return .handled }
         .onKeyPress(.return, phases: .down) { press in
@@ -59,14 +61,14 @@ struct CaptureView: View {
             }
             if let deadline = parsed.deadline {
                 chip(text: deadline.formatted(date: .abbreviated, time: .shortened),
-                     system: "calendar", tint: .blue)
+                     system: "calendar", tint: Theme.deadline)
             }
-            chip(text: priorityLabel(parsed.priority), system: "flag.fill", tint: priorityColor(parsed.priority))
+            chip(text: Theme.priorityLabel(parsed.priority), system: "flag.fill", tint: Theme.priority(parsed.priority))
             ForEach(parsed.tags, id: \.self) { tag in
-                chip(text: tag, system: "number", tint: .green)
+                chip(text: tag, system: "number", tint: Theme.tag)
             }
             if let rule = parsed.recurrence {
-                chip(text: recurrenceLabel(rule), system: "repeat", tint: .purple)
+                chip(text: Theme.recurrenceLabel(rule), system: "repeat", tint: Theme.recurrence)
             }
         }
         .font(.system(size: 12))
@@ -98,13 +100,4 @@ struct CaptureView: View {
         notes = ""
     }
 
-    private func priorityLabel(_ p: Priority) -> String {
-        switch p { case .high: "高"; case .medium: "中"; case .low: "低" }
-    }
-    private func priorityColor(_ p: Priority) -> Color {
-        switch p { case .high: .red; case .medium: .orange; case .low: .gray }
-    }
-    private func recurrenceLabel(_ r: RecurrenceRule) -> String {
-        switch r { case .daily: "每天"; case .weekdays: "工作日"; case .weekly: "每周"; case .monthly: "每月" }
-    }
 }
