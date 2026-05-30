@@ -15,12 +15,42 @@ enum SharedModel {
 
 @main
 struct WorkPanelApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         MenuBarExtra("WorkPanel", systemImage: "checklist") {
-            Text("WorkPanel")   // placeholder, replaced in Task 10
-                .padding()
+            TaskListView()
                 .modelContainer(SharedModel.container)
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let panel = PanelController()
+    private let scheduler = ReminderScheduler()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        HotkeyManager.register { [weak self] in self?.toggleCapture() }
+        Task { _ = await scheduler.requestAuthorization() }
+    }
+
+    private func toggleCapture() {
+        if panel.isVisible { panel.hide(); return }
+        let context = ModelContext(SharedModel.container)
+        let store = TodoStore(context: context)
+        panel.show {
+            CaptureView(
+                onSave: { [weak self] parsed, notes in
+                    let task = store.add(parsed, notes: notes)
+                    try? context.save()
+                    let scheduler = self?.scheduler
+                    Task { await scheduler?.schedule(for: task) }
+                    self?.panel.hide()
+                },
+                onCancel: { [weak self] in self?.panel.hide() }
+            )
+        }
     }
 }
