@@ -16,7 +16,10 @@ final class SettingsPanelController {
     func show<Content: View>(@ViewBuilder _ content: () -> Content) {
         let panel = panel ?? makePanel()
         self.panel = panel
-        panel.contentView = NSHostingView(rootView: content())
+        let hosting = NSHostingView(rootView: content())
+        panel.contentView = hosting
+        hosting.layoutSubtreeIfNeeded()
+        panel.setContentSize(hosting.fittingSize)   // 面板尺寸跟随 SwiftUI 内容,避免裁切/留白
         positionCentered(panel)
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
