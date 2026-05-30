@@ -34,4 +34,33 @@ final class BoardStore {
             task.boardOrder = i
         }
     }
+
+    @discardableResult
+    func addColumn(name: String) -> BoardColumn {
+        let nextOrder = (columns().map(\.order).max() ?? -1) + 1
+        let col = BoardColumn(name: name, order: nextOrder)
+        context.insert(col)
+        return col
+    }
+
+    func rename(_ column: BoardColumn, to name: String) {
+        column.name = name
+    }
+
+    /// 按传入数组顺序重新赋 order(0,1,2,…)。
+    func reorder(_ ordered: [BoardColumn]) {
+        for (i, col) in ordered.enumerated() { col.order = i }
+    }
+
+    /// 删除列;列内任务移到第一列。至少保留一个活动列(只剩一列时不删)。
+    func delete(_ column: BoardColumn) {
+        let cols = columns()
+        guard cols.count > 1, let target = cols.first(where: { $0.id != column.id })
+        else { return }
+        let tasks = (try? context.fetch(FetchDescriptor<TodoTask>())) ?? []
+        for task in tasks where task.columnID == column.id {
+            task.columnID = target.id
+        }
+        context.delete(column)
+    }
 }

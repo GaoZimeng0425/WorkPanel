@@ -44,4 +44,48 @@ struct BoardStoreTests {
         store.seedDefaultColumnsIfNeeded()
         #expect(store.columns().map(\.name) == ["已有"])
     }
+
+    @Test func addColumnAppendsWithNextOrder() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let col = store.addColumn(name: "上线")
+        #expect(col.order == 3)
+        #expect(store.columns().map(\.name) == ["计划中", "开发中", "测试中", "上线"])
+    }
+
+    @Test func renameChangesName() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let col = store.columns().first!
+        store.rename(col, to: "待办")
+        #expect(store.columns().first!.name == "待办")
+    }
+
+    @Test func reorderAssignsSequentialOrder() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let cols = store.columns()
+        store.reorder([cols[2], cols[0], cols[1]])
+        #expect(store.columns().map(\.name) == ["测试中", "计划中", "开发中"])
+    }
+
+    @Test func deleteReassignsTasksToFirstColumn() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let cols = store.columns()
+        let task = TodoTask(title: "在第二列")
+        task.columnID = cols[1].id
+        store.context.insert(task)
+
+        store.delete(cols[1])
+        #expect(store.columns().count == 2)
+        #expect(task.columnID == cols[0].id)
+    }
+
+    @Test func deleteIsNoOpWhenOnlyOneColumn() throws {
+        let store = try makeStore()
+        let only = store.addColumn(name: "唯一")
+        store.delete(only)
+        #expect(store.columns().count == 1)
+    }
 }
