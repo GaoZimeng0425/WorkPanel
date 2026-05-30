@@ -13,7 +13,6 @@ struct TaskListView: View {
     @State private var segment: Segment = .today
     @State private var tagFilter: String? = nil
     @State private var showArchive = false
-    @State private var showSettings = false
 
     private var store: TodoStore { TodoStore(context: context) }
     private let scheduler = ReminderScheduler()
@@ -47,7 +46,6 @@ struct TaskListView: View {
             footer
         }
         .frame(width: 360, height: 440)
-        .sheet(isPresented: $showSettings) { SettingsView() }
     }
 
     private var header: some View {
@@ -132,7 +130,7 @@ struct TaskListView: View {
                       systemImage: showArchive ? "chevron.left" : "checkmark.circle")
             }
             Spacer()
-            Button { showSettings = true } label: { Image(systemName: "gearshape") }
+            Button { NotificationCenter.default.post(name: .openSettings, object: nil) } label: { Image(systemName: "gearshape") }
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
         }
         .buttonStyle(.borderless)
