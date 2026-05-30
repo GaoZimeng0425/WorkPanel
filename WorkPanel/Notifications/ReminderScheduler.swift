@@ -21,16 +21,22 @@ final class ReminderScheduler {
             .requestAuthorization(options: [.alert, .sound])) ?? false
     }
 
-    func schedule(for task: TodoTask, now: Date = .now, calendar: Calendar = .current) async {
+    func schedule(for task: TodoTask,
+                  now: Date = .now,
+                  calendar: Calendar = .current,
+                  leadMinutes: Int = AppSettings.reminderLeadMinutes,
+                  soundEnabled: Bool = AppSettings.notificationSound) async {
         cancel(for: task)
-        guard let deadline = task.deadline, !task.isCompleted, deadline > now else { return }
+        guard let deadline = task.deadline, !task.isCompleted else { return }
+        let fireDate = deadline.addingTimeInterval(-Double(leadMinutes) * 60)
+        guard fireDate > now else { return }
 
         let content = UNMutableNotificationContent()
         content.title = task.title
         content.body = task.notes.isEmpty ? "任务到期" : task.notes
-        content.sound = .default
+        content.sound = soundEnabled ? .default : nil
 
-        let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: deadline)
+        let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
         let request = UNNotificationRequest(identifier: task.id.uuidString,
                                             content: content,

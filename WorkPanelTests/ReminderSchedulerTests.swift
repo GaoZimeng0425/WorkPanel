@@ -49,4 +49,24 @@ struct ReminderSchedulerTests {
         scheduler.cancel(for: task)
         #expect(mock.removed == [task.id.uuidString])
     }
+
+    @Test func leadTimeBeyondDeadlineSkips() async {
+        let mock = MockCenter()
+        let scheduler = ReminderScheduler(center: mock)
+        let now = Date()
+        // 截止 10 分钟后,但提前 15 分钟提醒 → 触发时间已过 → 跳过
+        let task = TodoTask(title: "x", deadline: now.addingTimeInterval(600))
+        await scheduler.schedule(for: task, now: now, leadMinutes: 15)
+        #expect(mock.added.isEmpty)
+    }
+
+    @Test func soundDisabledLeavesNilSound() async {
+        let mock = MockCenter()
+        let scheduler = ReminderScheduler(center: mock)
+        let now = Date()
+        let task = TodoTask(title: "x", deadline: now.addingTimeInterval(3600))
+        await scheduler.schedule(for: task, now: now, soundEnabled: false)
+        #expect(mock.added.count == 1)
+        #expect(mock.added.first?.content.sound == nil)
+    }
 }
