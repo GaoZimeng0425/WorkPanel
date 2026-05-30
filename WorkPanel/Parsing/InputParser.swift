@@ -27,8 +27,9 @@ struct InputParser: Sendable {
         "今天": 0, "今日": 0, "明天": 1, "明日": 1, "后天": 2, "大后天": 3,
     ]
 
-    nonisolated func parse(_ input: String, now: Date) -> ParsedInput {
+    nonisolated func parse(_ input: String, now: Date, defaultPriority: Priority = .medium) -> ParsedInput {
         var result = ParsedInput()
+        result.priority = defaultPriority
         var titleWords: [String] = []
         var dayComponents: DateComponents? = nil
         var time: (hour: Int, minute: Int)? = nil

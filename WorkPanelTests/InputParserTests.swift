@@ -96,4 +96,14 @@ struct InputParserTests {
         #expect(r.title == "修复 bug-123 在 prod")
         #expect(r.deadline == nil)
     }
+
+    @Test func defaultPriorityAppliesWhenNoToken() {
+        let r = InputParser(calendar: calendar).parse("写周报", now: now, defaultPriority: .high)
+        #expect(r.priority == .high)
+    }
+
+    @Test func priorityTokenOverridesDefault() {
+        let r = InputParser(calendar: calendar).parse("写周报 !低", now: now, defaultPriority: .high)
+        #expect(r.priority == .low)
+    }
 }
