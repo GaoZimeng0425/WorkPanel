@@ -98,8 +98,11 @@ struct TaskListView: View {
                 Button("恢复") { store.reopen(task); try? context.save() }
                     .buttonStyle(.borderless)
             }
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 
     private func row(_ task: TodoTask) -> some View {
