@@ -10,6 +10,10 @@ extension KeyboardShortcuts.Name {
         "toggleBoard",
         default: .init(.k, modifiers: [.command, .option])
     )
+    static let toggleSettings = Self(
+        "toggleSettings",
+        default: .init(.comma, modifiers: [.command, .option])
+    )
 }
 
 @MainActor
@@ -19,5 +23,8 @@ enum HotkeyManager {
     }
     static func registerBoard(_ handler: @escaping () -> Void) {
         KeyboardShortcuts.onKeyUp(for: .toggleBoard, action: handler)
+    }
+    static func registerSettings(_ handler: @escaping () -> Void) {
+        KeyboardShortcuts.onKeyUp(for: .toggleSettings, action: handler)
     }
 }
