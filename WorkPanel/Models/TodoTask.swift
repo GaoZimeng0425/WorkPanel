@@ -14,6 +14,8 @@ final class TodoTask {
     var createdAt: Date
     var snoozedUntil: Date?
     var recurrenceRaw: String?
+    var columnID: UUID?
+    var boardOrder: Int
 
     var priority: Priority {
         get { Priority(rawValue: priorityRaw) ?? .medium }
@@ -30,7 +32,9 @@ final class TodoTask {
          priority: Priority = .medium,
          tags: [String] = [],
          recurrence: RecurrenceRule? = nil,
-         createdAt: Date = .now) {
+         createdAt: Date = .now,
+         columnID: UUID? = nil,
+         boardOrder: Int = 0) {
         self.id = UUID()
         self.title = title
         self.notes = notes
@@ -42,5 +46,7 @@ final class TodoTask {
         self.createdAt = createdAt
         self.snoozedUntil = nil
         self.recurrenceRaw = recurrence?.rawValue
+        self.columnID = columnID
+        self.boardOrder = boardOrder
     }
 }
