@@ -4,6 +4,24 @@ import SwiftUI
 /// 无边框面板默认无法成为 key window;子类放开以便接收 Esc / 文本输入。
 final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
+
+    /// Esc 收起。由各 Controller 注入具体动作(动画 / 隐藏)。
+    /// 借面板层的 cancelOperation: 而非 SwiftUI .onKeyPress(.escape) —— 后者在无焦点元素的
+    /// 面板(如看板)里不触发。
+    var onCancel: (() -> Void)?
+    override func cancelOperation(_ sender: Any?) {
+        onCancel?()
+    }
+
+    /// ⌘, 打开设置:命令组合键走 performKeyEquivalent: 路径,仅当本面板为 key window 时生效(非全局)。
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+           event.charactersIgnoringModifiers == "," {
+            NotificationCenter.default.post(name: .openSettings, object: nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
 }
 
 @MainActor
@@ -25,7 +43,8 @@ final class BoardPanelController: NSObject {
                            width: width, height: height)
         let start = final.offsetBy(dx: 0, dy: -(height + margin))
         panel.setFrame(start, display: false)
-        NSApp.activate(ignoringOtherApps: true)
+        // 不调用 NSApp.activate:看板作为浮层出现,不抢占当前 App 的 active 状态。
+        // nonactivatingPanel + canBecomeKey 仍能接收 Esc / ⌘, / 文本输入。
         panel.makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.28
@@ -61,6 +80,7 @@ final class BoardPanelController: NSObject {
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.onCancel = { [weak self] in self?.hide() }
         return panel
     }
 }

@@ -49,7 +49,6 @@ struct CaptureView: View {
         .frame(width: 560)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: Theme.panelRadius))
-        .settingsShortcut()
         .onAppear { focus = .title }
         .onKeyPress(.escape) { onCancel(); return .handled }
         .onKeyPress(.return, phases: .down) { press in

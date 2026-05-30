@@ -6,20 +6,6 @@ extension Notification.Name {
     static let openSettings = Notification.Name("openSettings")
 }
 
-extension View {
-    /// 标准 App 行为:仅当本面板为 key window 时,⌘, 打开设置(非全局热键)。
-    /// ⌘ 组合键走 AppKit 的 performKeyEquivalent: 路径,需用 keyboardShortcut 注册,
-    /// onKeyPress(走 keyDown:)收不到。隐藏按钮挂在面板内容里,失焦即失效。
-    func settingsShortcut() -> some View {
-        background(
-            Button("") { NotificationCenter.default.post(name: .openSettings, object: nil) }
-                .keyboardShortcut(",", modifiers: .command)
-                .opacity(0)
-                .accessibilityHidden(true)
-        )
-    }
-}
-
 /// 居中浮窗设置面板。仿 PanelController,但**失焦不自动关闭**(手动关闭:完成按钮 / Esc)。
 @MainActor
 final class SettingsPanelController {
@@ -62,6 +48,7 @@ final class SettingsPanelController {
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.onCancel = { [weak self] in self?.hide() }
         return panel
     }
 

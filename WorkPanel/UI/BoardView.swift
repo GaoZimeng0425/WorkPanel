@@ -54,7 +54,6 @@ struct BoardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .onAppear { store.seedDefaultColumnsIfNeeded(); try? context.save() }
         .onKeyPress(.escape) { onClose(); return .handled }
-        .settingsShortcut()
         .alert("重命名列", isPresented: Binding(get: { renaming != nil },
                                               set: { if !$0 { renaming = nil } })) {
             TextField("名称", text: $renameText)
