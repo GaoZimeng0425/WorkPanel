@@ -6,12 +6,15 @@ struct CaptureView: View {
 
     @State private var input = ""
     @State private var notes = ""
+    @AppStorage(AppSettings.Key.defaultPriority) private var defaultPriority = Priority.medium.rawValue
     @FocusState private var focus: Field?
 
     private enum Field { case title, notes }
     private let parser = InputParser()
 
-    private var parsed: ParsedInput { parser.parse(input, now: .now) }
+    private var parsed: ParsedInput {
+        parser.parse(input, now: .now, defaultPriority: Priority(rawValue: defaultPriority) ?? .medium)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
