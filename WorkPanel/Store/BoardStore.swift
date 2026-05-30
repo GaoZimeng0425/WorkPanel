@@ -63,4 +63,15 @@ final class BoardStore {
         }
         context.delete(column)
     }
+
+    /// 把 task 放到目标列的第 index 位,并把该列未完成任务的 boardOrder 重排为 0,1,2,…
+    func move(_ task: TodoTask, to columnID: UUID, at index: Int) {
+        task.columnID = columnID
+        var siblings = ((try? context.fetch(FetchDescriptor<TodoTask>())) ?? [])
+            .filter { !$0.isCompleted && $0.columnID == columnID && $0.id != task.id }
+            .sorted { $0.boardOrder < $1.boardOrder }
+        let clamped = max(0, min(index, siblings.count))
+        siblings.insert(task, at: clamped)
+        for (i, t) in siblings.enumerated() { t.boardOrder = i }
+    }
 }

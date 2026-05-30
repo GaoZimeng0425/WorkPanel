@@ -88,4 +88,31 @@ struct BoardStoreTests {
         store.delete(only)
         #expect(store.columns().count == 1)
     }
+
+    @Test func moveSetsColumnAndRenumbersBoardOrder() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let cols = store.columns()
+        let a = TodoTask(title: "A"); a.columnID = cols[0].id; a.boardOrder = 0
+        let b = TodoTask(title: "B"); b.columnID = cols[1].id; b.boardOrder = 0
+        [a, b].forEach { store.context.insert($0) }
+
+        store.move(a, to: cols[1].id, at: 0)
+        #expect(a.columnID == cols[1].id)
+        #expect(a.boardOrder == 0)
+        #expect(b.boardOrder == 1)
+    }
+
+    @Test func moveWithinColumnReorders() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let col = store.columns().first!
+        let a = TodoTask(title: "A"); a.columnID = col.id; a.boardOrder = 0
+        let b = TodoTask(title: "B"); b.columnID = col.id; b.boardOrder = 1
+        let c = TodoTask(title: "C"); c.columnID = col.id; c.boardOrder = 2
+        [a, b, c].forEach { store.context.insert($0) }
+
+        store.move(c, to: col.id, at: 0)
+        #expect([c.boardOrder, a.boardOrder, b.boardOrder] == ([0, 1, 2] as [Int]))
+    }
 }
