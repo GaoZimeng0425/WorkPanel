@@ -81,6 +81,10 @@ struct BoardView: View {
             Text("看板").font(.headline)
             Text("\(tasks.filter { !$0.isCompleted }.count) 项").foregroundStyle(.secondary).font(.caption)
             Spacer()
+            Button { NotificationCenter.default.post(name: .openSettings, object: nil) } label: {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
             Text("esc 收起").font(.caption).foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
@@ -123,7 +127,7 @@ struct BoardView: View {
 
     private func addTaskField(_ column: BoardColumn) -> some View {
         AddTaskField { title in
-            let parsed = InputParser().parse(title, now: .now)
+            let parsed = InputParser().parse(title, now: .now, defaultPriority: AppSettings.defaultPriority)
             guard !parsed.title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
             let task = TodoTask(title: parsed.title, deadline: parsed.deadline,
                                 priority: parsed.priority, tags: parsed.tags,
