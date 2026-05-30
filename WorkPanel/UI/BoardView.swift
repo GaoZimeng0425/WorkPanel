@@ -121,7 +121,19 @@ struct BoardView: View {
                     }
             }
 
-            addTaskField(column)
+            Button {
+                NotificationCenter.default.post(
+                    name: .openTaskEditor,
+                    object: TaskEditorView.Mode.create(columnID: column.id))
+            } label: {
+                Text("+ 添加任务")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
             Spacer(minLength: 0)
         }
         .padding(10)
@@ -129,21 +141,6 @@ struct BoardView: View {
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
         .dropDestination(for: String.self) { dropped, _ in
             handleDrop(dropped, into: column.id, at: items.count); return true
-        }
-    }
-
-    private func addTaskField(_ column: BoardColumn) -> some View {
-        AddTaskField { title in
-            let parsed = InputParser().parse(title, now: .now, defaultPriority: AppSettings.defaultPriority)
-            guard !parsed.title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-            let task = TodoTask(title: parsed.title, deadline: parsed.deadline,
-                                priority: parsed.priority, tags: parsed.tags,
-                                recurrence: parsed.recurrence)
-            task.columnID = column.id
-            task.boardOrder = activeTasks(in: column).count
-            context.insert(task)
-            try? context.save()
-            Task { await scheduler.schedule(for: task) }
         }
     }
 
@@ -231,16 +228,4 @@ struct BoardView: View {
 
 }
 
-/// 列底快速新建输入框。回车提交后清空。
-private struct AddTaskField: View {
-    let onSubmit: (String) -> Void
-    @State private var text = ""
 
-    var body: some View {
-        TextField("+ 添加任务", text: $text)
-            .textFieldStyle(.plain)
-            .font(.system(size: 12))
-            .padding(.horizontal, 8).padding(.vertical, 6)
-            .onSubmit { onSubmit(text); text = "" }
-    }
-}
