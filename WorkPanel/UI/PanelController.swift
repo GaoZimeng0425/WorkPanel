@@ -39,6 +39,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.onCancel = { [weak self] in self?.hide() }
         panel.delegate = self
         return panel
     }
