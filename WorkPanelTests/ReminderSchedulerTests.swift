@@ -69,4 +69,14 @@ struct ReminderSchedulerTests {
         #expect(mock.added.count == 1)
         #expect(mock.added.first?.content.sound == nil)
     }
+
+    @Test func soundEnabledUsesDefaultSound() async {
+        let mock = MockCenter()
+        let scheduler = ReminderScheduler(center: mock)
+        let now = Date()
+        let task = TodoTask(title: "x", deadline: now.addingTimeInterval(3600))
+        await scheduler.schedule(for: task, now: now, soundEnabled: true)
+        #expect(mock.added.count == 1)
+        #expect(mock.added.first?.content.sound == .default)
+    }
 }
