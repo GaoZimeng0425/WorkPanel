@@ -11,6 +11,7 @@ struct SettingsView: View {
 
             Form {
                 KeyboardShortcuts.Recorder("唤起捕获面板：", name: .toggleCapture)
+                KeyboardShortcuts.Recorder("唤起看板面板：", name: .toggleBoard)
                 Toggle("开机自启动", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in
                         do { try LaunchAtLogin.setEnabled(enabled) }

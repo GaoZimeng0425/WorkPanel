@@ -29,10 +29,12 @@ struct WorkPanelApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let panel = PanelController()
+    private let board = BoardPanelController()
     private let scheduler = ReminderScheduler()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         HotkeyManager.register { [weak self] in self?.toggleCapture() }
+        HotkeyManager.registerBoard { [weak self] in self?.toggleBoard() }
         Task { _ = await scheduler.requestAuthorization() }
     }
 
@@ -44,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             CaptureView(
                 onSave: { [weak self] parsed, notes in
                     let task = store.add(parsed, notes: notes)
+                    task.columnID = BoardStore(context: context).firstColumn?.id
                     try? context.save()
                     let scheduler = self?.scheduler
                     Task { await scheduler?.schedule(for: task) }
@@ -51,6 +54,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 },
                 onCancel: { [weak self] in self?.panel.hide() }
             )
+        }
+    }
+
+    private func toggleBoard() {
+        if board.isVisible { board.hide(); return }
+        board.show {
+            BoardView(onClose: { [weak self] in self?.board.hide() })
+                .modelContainer(SharedModel.container)
         }
     }
 }
