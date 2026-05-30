@@ -68,8 +68,13 @@ struct TaskListView: View {
             .menuStyle(.borderlessButton)
             .frame(width: 28)
 
-            CreateTaskButton(columnID: nil)
-                .frame(width: 28)
+            Button {
+                NotificationCenter.default.post(name: .openTaskEditor, object: TaskEditorView.Mode.create(columnID: nil))
+            } label: {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(.borderless)
+            .frame(width: 28)
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
     }
@@ -122,7 +127,10 @@ struct TaskListView: View {
             .menuStyle(.borderlessButton)
             .frame(width: 24)
         }
-        .taskEditPopover(task)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            NotificationCenter.default.post(name: .openTaskEditor, object: TaskEditorView.Mode.edit(task))
+        }
     }
 
     private var footer: some View {

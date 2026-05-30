@@ -41,25 +41,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(forName: .openSettings, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.toggleSettings() }
         }
+        NotificationCenter.default.addObserver(forName: .openTaskEditor, object: nil, queue: .main) { [weak self] note in
+            guard let mode = note.object as? TaskEditorView.Mode else { return }
+            MainActor.assumeIsolated { self?.showEditor(mode) }
+        }
         Task { _ = await scheduler.requestAuthorization() }
     }
 
     private func toggleCapture() {
         if panel.isVisible { panel.hide(); return }
-        let context = ModelContext(SharedModel.container)
-        let store = TodoStore(context: context)
+        showEditor(.create(columnID: nil))
+    }
+
+    private func showEditor(_ mode: TaskEditorView.Mode) {
         panel.show {
-            CaptureView(
-                onSave: { [weak self] parsed, notes in
-                    let task = store.add(parsed, notes: notes)
-                    task.columnID = BoardStore(context: context).firstColumn?.id
-                    try? context.save()
-                    let scheduler = self?.scheduler
-                    Task { await scheduler?.schedule(for: task) }
-                    self?.panel.hide()
-                },
-                onCancel: { [weak self] in self?.panel.hide() }
-            )
+            TaskEditorView(mode: mode, onClose: { [weak self] in self?.panel.hide() })
+                .modelContainer(SharedModel.container)
         }
     }
 

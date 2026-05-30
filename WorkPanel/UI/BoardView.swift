@@ -99,8 +99,13 @@ struct BoardView: View {
                 Text(column.name).font(.subheadline).bold()
                 Text("\(items.count)").foregroundStyle(.secondary).font(.caption)
                 Spacer()
-                CreateTaskButton(columnID: column.id)
-                    .frame(width: 22)
+                Button {
+                    NotificationCenter.default.post(name: .openTaskEditor, object: TaskEditorView.Mode.create(columnID: column.id))
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .buttonStyle(.borderless)
+                .frame(width: 22)
                 Menu {
                     Button("重命名") { renameText = column.name; renaming = column }
                     Button("删除", role: .destructive) { store.delete(column); try? context.save() }
@@ -187,12 +192,15 @@ struct BoardView: View {
     private func card(_ task: TodoTask) -> some View {
         TaskCardView(task: task, onComplete: { complete(task) }) { EmptyView() }
             .draggable(task.id.uuidString)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                NotificationCenter.default.post(name: .openTaskEditor, object: TaskEditorView.Mode.edit(task))
+            }
             .contextMenu {
                 Button("删除", role: .destructive) {
                     scheduler.cancel(for: task); context.delete(task); try? context.save()
                 }
             }
-            .taskEditPopover(task)
     }
 
     // MARK: - 拖拽处理
