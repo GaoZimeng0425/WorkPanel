@@ -70,14 +70,18 @@ struct TaskListView: View {
             .menuStyle(.borderlessButton)
             .frame(width: 28)
         }
-        .padding(10)
+        .padding(.horizontal, 14).padding(.vertical, 10)
     }
 
     private var taskList: some View {
         List(visibleTasks) { task in
             row(task)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .overlay {
             if visibleTasks.isEmpty {
                 ContentUnavailableView("没有任务", systemImage: "checkmark.circle")
@@ -99,38 +103,7 @@ struct TaskListView: View {
     }
 
     private func row(_ task: TodoTask) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Button {
-                complete(task)
-            } label: {
-                Image(systemName: "circle")
-            }
-            .buttonStyle(.borderless)
-
-            Circle()
-                .fill(priorityColor(task.priority))
-                .frame(width: 8, height: 8)
-                .padding(.top, 5)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(task.title)
-                HStack(spacing: 8) {
-                    if let deadline = task.deadline {
-                        Text(deadline.formatted(date: .omitted, time: .shortened))
-                            .foregroundStyle(deadline < .now ? .red : .secondary)
-                    }
-                    if let rule = task.recurrence {
-                        Label(recurrenceLabel(rule), systemImage: "repeat")
-                    }
-                    ForEach(task.tags, id: \.self) { tag in
-                        Text("#\(tag)").foregroundStyle(.blue)
-                    }
-                }
-                .font(.system(size: 11))
-            }
-
-            Spacer()
-
+        TaskCardView(task: task, onComplete: { complete(task) }) {
             Menu {
                 Button("推迟到明天") { snooze(task, days: 1) }
                 Button("推迟到下周") { snooze(task, days: 7) }
@@ -145,7 +118,6 @@ struct TaskListView: View {
             .menuStyle(.borderlessButton)
             .frame(width: 24)
         }
-        .padding(.vertical, 2)
     }
 
     private var footer: some View {
@@ -180,10 +152,4 @@ struct TaskListView: View {
         try? context.save()
     }
 
-    private func priorityColor(_ p: Priority) -> Color {
-        switch p { case .high: .red; case .medium: .orange; case .low: .gray }
-    }
-    private func recurrenceLabel(_ r: RecurrenceRule) -> String {
-        switch r { case .daily: "每天"; case .weekdays: "工作日"; case .weekly: "每周"; case .monthly: "每月" }
-    }
 }
