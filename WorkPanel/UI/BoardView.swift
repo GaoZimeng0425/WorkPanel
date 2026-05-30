@@ -179,33 +179,13 @@ struct BoardView: View {
     // MARK: - 卡片
 
     private func card(_ task: TodoTask) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Button { complete(task) } label: { Image(systemName: "circle") }
-                .buttonStyle(.borderless)
-            Circle().fill(priorityColor(task.priority)).frame(width: 7, height: 7).padding(.top, 5)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(task.title).font(.system(size: 13)).lineLimit(2)
-                HStack(spacing: 6) {
-                    if let d = task.deadline {
-                        Text(d.formatted(date: .omitted, time: .shortened))
-                            .foregroundStyle(d < .now ? .red : .secondary)
-                    }
-                    if task.recurrence != nil { Image(systemName: "repeat") }
-                    ForEach(task.tags, id: \.self) { Text("#\($0)").foregroundStyle(.blue) }
+        TaskCardView(task: task, onComplete: { complete(task) }) { EmptyView() }
+            .draggable(task.id.uuidString)
+            .contextMenu {
+                Button("删除", role: .destructive) {
+                    scheduler.cancel(for: task); context.delete(task); try? context.save()
                 }
-                .font(.system(size: 10))
             }
-            Spacer(minLength: 0)
-        }
-        .padding(8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-        .draggable(task.id.uuidString)
-        .contextMenu {
-            Button("删除", role: .destructive) {
-                scheduler.cancel(for: task); context.delete(task); try? context.save()
-            }
-        }
     }
 
     // MARK: - 拖拽处理
@@ -234,9 +214,6 @@ struct BoardView: View {
         if let next { Task { await scheduler.schedule(for: next) } }
     }
 
-    private func priorityColor(_ p: Priority) -> Color {
-        switch p { case .high: .red; case .medium: .orange; case .low: .gray }
-    }
 }
 
 /// 列底快速新建输入框。回车提交后清空。
