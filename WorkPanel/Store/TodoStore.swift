@@ -41,6 +41,7 @@ final class TodoStore {
     func reopen(_ task: TodoTask) {
         task.isCompleted = false
         task.completedAt = nil
+        task.snoozedUntil = nil
     }
 
     func snooze(_ task: TodoTask, until date: Date) {
