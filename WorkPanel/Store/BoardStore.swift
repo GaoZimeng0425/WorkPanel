@@ -79,4 +79,14 @@ final class BoardStore {
         siblings.insert(task, at: target)
         for (i, t) in siblings.enumerated() { t.boardOrder = i }
     }
+
+    /// 设置任务状态(所属看板列)。目标为某列时追加到该列末尾并重排;目标为 nil 时清空状态。
+    func setColumn(_ task: TodoTask, to columnID: UUID?) {
+        guard task.columnID != columnID else { return }
+        if let columnID {
+            move(task, to: columnID, at: .max)   // .max 经 move 内部 clamp 到末尾
+        } else {
+            task.columnID = nil
+        }
+    }
 }

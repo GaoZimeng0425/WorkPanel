@@ -129,4 +129,45 @@ struct BoardStoreTests {
         // 期望 insert-before C: [B, A, C]
         #expect([b.boardOrder, a.boardOrder, c.boardOrder] == ([0, 1, 2] as [Int]))
     }
+
+    @Test func setColumnAppendsToEndOfTargetColumnAndRenumbers() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let cols = store.columns()
+        let a = TodoTask(title: "A"); a.columnID = cols[1].id; a.boardOrder = 0
+        let b = TodoTask(title: "B"); b.columnID = cols[1].id; b.boardOrder = 1
+        let mover = TodoTask(title: "M"); mover.columnID = cols[0].id; mover.boardOrder = 0
+        [a, b, mover].forEach { store.context.insert($0) }
+
+        store.setColumn(mover, to: cols[1].id)
+
+        #expect(mover.columnID == cols[1].id)
+        #expect([a.boardOrder, b.boardOrder, mover.boardOrder] == ([0, 1, 2] as [Int]))
+    }
+
+    @Test func setColumnToNilClearsStatus() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let col = store.columns().first!
+        let t = TodoTask(title: "T"); t.columnID = col.id; t.boardOrder = 3
+        store.context.insert(t)
+
+        store.setColumn(t, to: nil)
+
+        #expect(t.columnID == nil)
+        #expect(t.boardOrder == 3)
+    }
+
+    @Test func setColumnToSameColumnIsNoOp() throws {
+        let store = try makeStore()
+        store.seedDefaultColumnsIfNeeded()
+        let col = store.columns().first!
+        let a = TodoTask(title: "A"); a.columnID = col.id; a.boardOrder = 0
+        let b = TodoTask(title: "B"); b.columnID = col.id; b.boardOrder = 1
+        [a, b].forEach { store.context.insert($0) }
+
+        store.setColumn(b, to: col.id)
+
+        #expect([a.boardOrder, b.boardOrder] == ([0, 1] as [Int]))
+    }
 }
