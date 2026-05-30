@@ -32,7 +32,7 @@ struct SettingsView: View {
                 }
                 Divider()
                 row("设置面板", systemImage: "gearshape") {
-                    KeyboardShortcuts.Recorder("", name: .toggleSettings)
+                    Text("⌘,").font(.callout).foregroundStyle(.secondary)
                 }
             }
 

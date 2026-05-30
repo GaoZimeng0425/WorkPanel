@@ -38,7 +38,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppSettings.appearance.apply()
         HotkeyManager.register { [weak self] in self?.toggleCapture() }
         HotkeyManager.registerBoard { [weak self] in self?.toggleBoard() }
-        HotkeyManager.registerSettings { [weak self] in self?.toggleSettings() }
         NotificationCenter.default.addObserver(forName: .openSettings, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.toggleSettings() }
         }
