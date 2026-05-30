@@ -26,8 +26,9 @@ struct TaskCardView<Trailing: View>: View {
                         Text(d.formatted(date: .omitted, time: .shortened))
                             .foregroundStyle(d < .now ? .red : Theme.deadline)
                     }
-                    if task.recurrence != nil {
-                        Image(systemName: "repeat").foregroundStyle(Theme.recurrence)
+                    if let rule = task.recurrence {
+                        Label(Theme.recurrenceLabel(rule), systemImage: "repeat")
+                            .foregroundStyle(Theme.recurrence)
                     }
                     ForEach(task.tags, id: \.self) { tag in
                         Text("#\(tag)").foregroundStyle(Theme.tag)
