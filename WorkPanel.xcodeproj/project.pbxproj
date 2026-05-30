@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1CF7FBACD7CD49CA9AF50505 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = F7A1B9D182324ABBA76DB7F4 /* KeyboardShortcuts */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		45B87AFF2FC9B66500CDC1D7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -22,10 +26,6 @@
 			remoteInfo = WorkPanel;
 		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXBuildFile section */
-		1CF7FBACD7CD49CA9AF50505 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = F7A1B9D182324ABBA76DB7F4 /* KeyboardShortcuts */; };
-/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		45B87AEF2FC9B66200CDC1D7 /* WorkPanel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkPanel.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -201,11 +201,11 @@
 			);
 			mainGroup = 45B87AE62FC9B66200CDC1D7;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = 45B87AF02FC9B66200CDC1D7 /* Products */;
 			packageReferences = (
 				17DF481A325C4484BC43CA99 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 45B87AF02FC9B66200CDC1D7 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -412,6 +412,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -427,7 +428,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				INFOPLIST_KEY_LSUIElement = YES;
 			};
 			name = Debug;
 		};
@@ -445,6 +445,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -460,7 +461,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
-				INFOPLIST_KEY_LSUIElement = YES;
 			};
 			name = Release;
 		};

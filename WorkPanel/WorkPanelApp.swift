@@ -1,32 +1,26 @@
-//
-//  WorkPanelApp.swift
-//  WorkPanel
-//
-//  Created by GaoZimeng on 2026/5/29.
-//
-
 import SwiftUI
 import SwiftData
 
-@main
-struct WorkPanelApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+enum SharedModel {
+    @MainActor static let container: ModelContainer = {
+        let schema = Schema([TodoTask.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [config])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
+}
 
+@main
+struct WorkPanelApp: App {
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra("WorkPanel", systemImage: "checklist") {
+            Text("WorkPanel")   // placeholder, replaced in Task 10
+                .padding()
+                .modelContainer(SharedModel.container)
         }
-        .modelContainer(sharedModelContainer)
+        .menuBarExtraStyle(.window)
     }
 }
