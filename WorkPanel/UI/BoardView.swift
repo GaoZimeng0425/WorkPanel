@@ -99,6 +99,8 @@ struct BoardView: View {
                 Text(column.name).font(.subheadline).bold()
                 Text("\(items.count)").foregroundStyle(.secondary).font(.caption)
                 Spacer()
+                CreateTaskButton(columnID: column.id)
+                    .frame(width: 22)
                 Menu {
                     Button("重命名") { renameText = column.name; renaming = column }
                     Button("删除", role: .destructive) { store.delete(column); try? context.save() }
@@ -190,6 +192,7 @@ struct BoardView: View {
                     scheduler.cancel(for: task); context.delete(task); try? context.save()
                 }
             }
+            .taskEditPopover(task)
     }
 
     // MARK: - 拖拽处理
