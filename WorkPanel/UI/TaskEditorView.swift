@@ -19,6 +19,7 @@ struct TaskEditorView: View {
     private let scheduler = ReminderScheduler()
 
     @State private var text: String
+    @State private var previewing = false
     private let base: ParsedInput
     private let columnID: UUID?
 
@@ -55,13 +56,29 @@ struct TaskEditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(isEditing ? "编辑任务" : "新建任务").font(.headline)
+            HStack {
+                Text(isEditing ? "编辑任务" : "新建任务").font(.headline)
+                Spacer()
+                Picker("", selection: $previewing) {
+                    Text("编辑").tag(false)
+                    Text("预览").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 140)
+            }
 
             TokenStrip(fields: resolved.fields)
 
-            MarkdownTextEditor(text: $text, onSave: save, onCancel: onClose)
-                .frame(height: 220)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
+            Group {
+                if previewing {
+                    ScrollView { MarkdownPreview(text: $text).padding(8) }
+                } else {
+                    MarkdownTextEditor(text: $text, onSave: save, onCancel: onClose)
+                }
+            }
+            .frame(height: 220)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
 
             HStack {
                 Text("第一行为标题 · ⌘↩ 保存 · esc 取消")
