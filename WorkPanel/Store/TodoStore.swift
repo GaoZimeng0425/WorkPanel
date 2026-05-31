@@ -36,6 +36,7 @@ final class TodoStore {
                                       priority: task.priority,
                                       tags: task.tags,
                                       recurrence: rule,
+                                      urgencyOverride: task.urgencyOverride,
                                       createdAt: now)
             context.insert(occurrence)
             follow = occurrence

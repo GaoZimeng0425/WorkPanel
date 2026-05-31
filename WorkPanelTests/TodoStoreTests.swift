@@ -92,4 +92,13 @@ struct TodoStoreTests {
         let task = store.add(parsed, notes: "")
         #expect(task.urgencyOverride == true)
     }
+
+    @Test func completeCarriesUrgencyOverrideToNextOccurrence() throws {
+        let store = try makeStore()
+        let task = TodoTask(title: "周会", priority: .high, recurrence: .weekly,
+                            urgencyOverride: false)
+        store.context.insert(task)
+        let next = store.complete(task)
+        #expect(next?.urgencyOverride == false)
+    }
 }
