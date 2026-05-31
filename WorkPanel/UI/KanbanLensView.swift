@@ -92,9 +92,7 @@ struct KanbanLensView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, task in
                         LensCard(task: task, draggable: true)
-                            .dropDestination(for: String.self) { dropped, _ in
-                                handleDrop(dropped, into: column.id, at: index); return true
-                            }
+                            .deferredDrop { handleDrop($0, into: column.id, at: index) }
                     }
 
                     Button {
@@ -118,9 +116,7 @@ struct KanbanLensView: View {
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
-        .dropDestination(for: String.self) { dropped, _ in
-            handleDrop(dropped, into: column.id, at: items.count); return true
-        }
+        .deferredDrop { handleDrop($0, into: column.id, at: items.count) }
     }
 
     private var archiveColumnView: some View {
@@ -151,9 +147,7 @@ struct KanbanLensView: View {
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
-        .dropDestination(for: String.self) { dropped, _ in
-            handleArchiveDrop(dropped); return true
-        }
+        .deferredDrop { handleArchiveDrop($0) }
     }
 
     private var addColumnButton: some View {
@@ -171,21 +165,15 @@ struct KanbanLensView: View {
         return tasks.first { $0.id == id }
     }
 
-    private func handleDrop(_ dropped: [String], into columnID: UUID, at index: Int) {
-        guard let s = dropped.first, let task = task(for: s) else { return }
-        // 推迟到系统拖拽影像淡出之后(~0.3s)再落位,避免真实卡片与淡出中的
-        // 拖拽影像在光标处重叠产生残留。
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            if task.isCompleted { todoStore.reopen(task) }   // 从归档拖回
-            withAnimation(.easeInOut(duration: 0.18)) {
-                store.move(task, to: columnID, at: index)
-            }
-            try? context.save()
-        }
+    private func handleDrop(_ payload: String, into columnID: UUID, at index: Int) {
+        guard let task = task(for: payload) else { return }
+        if task.isCompleted { todoStore.reopen(task) }   // 从归档拖回
+        store.move(task, to: columnID, at: index)
+        try? context.save()
     }
 
-    private func handleArchiveDrop(_ dropped: [String]) {
-        guard let s = dropped.first, let task = task(for: s), !task.isCompleted else { return }
+    private func handleArchiveDrop(_ payload: String) {
+        guard let task = task(for: payload), !task.isCompleted else { return }
         let next = todoStore.complete(task)
         try? context.save()
         scheduler.cancel(for: task)

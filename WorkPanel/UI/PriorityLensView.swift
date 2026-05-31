@@ -43,17 +43,11 @@ struct PriorityLensView: View {
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
-        .dropDestination(for: String.self) { dropped, _ in
-            guard let s = dropped.first, let id = UUID(uuidString: s),
-                  let task = tasks.first(where: { $0.id == id }) else { return false }
-            // 推迟到系统拖拽影像淡出之后(~0.3s)再落位,避免残留(同 KanbanLensView)。
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    store.setPriority(task, to: p)
-                }
-                try? context.save()
-            }
-            return true
+        .deferredDrop { payload in
+            guard let id = UUID(uuidString: payload),
+                  let task = tasks.first(where: { $0.id == id }) else { return }
+            store.setPriority(task, to: p)
+            try? context.save()
         }
     }
 }
