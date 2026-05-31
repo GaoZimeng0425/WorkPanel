@@ -83,4 +83,13 @@ struct TodoStoreTests {
         let sorted = TaskFilter.all([lowEarly, highLate])
         #expect(sorted.map(\.title) == ["高晚", "低早"])
     }
+
+    @Test func addPropagatesUrgencyOverride() throws {
+        let store = try makeStore()
+        var parsed = ParsedInput()
+        parsed.title = "强制紧急"
+        parsed.urgencyOverride = true
+        let task = store.add(parsed, notes: "")
+        #expect(task.urgencyOverride == true)
+    }
 }

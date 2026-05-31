@@ -40,6 +40,7 @@ struct TaskEditorView: View {
             b.priority = task.priority
             b.tags = task.tags
             b.recurrence = task.recurrence
+            b.urgencyOverride = task.urgencyOverride
             base = b
             self.columnID = task.columnID
         }
@@ -114,6 +115,7 @@ struct TaskEditorView: View {
             existing.priority = fields.priority
             existing.tags = fields.tags
             existing.recurrence = fields.recurrence
+            existing.urgencyOverride = fields.urgencyOverride
             task = existing
         }
         boardStore.setColumn(task, to: columnID)
@@ -145,6 +147,9 @@ private struct TokenStrip: View {
 
     private var chipTexts: [String] {
         var out: [String] = [Theme.priorityLabel(fields.priority)]
+        if let u = fields.urgencyOverride {
+            out.append(u ? "紧急" : "不紧急")
+        }
         if let d = fields.deadline {
             out.append(d.formatted(date: .abbreviated, time: .shortened))
         }

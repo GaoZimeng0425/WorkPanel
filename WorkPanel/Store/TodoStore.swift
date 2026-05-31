@@ -17,6 +17,7 @@ final class TodoStore {
                             priority: parsed.priority,
                             tags: parsed.tags,
                             recurrence: parsed.recurrence,
+                            urgencyOverride: parsed.urgencyOverride,
                             createdAt: now)
         context.insert(task)
         return task
