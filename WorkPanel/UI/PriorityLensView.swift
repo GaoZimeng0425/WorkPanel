@@ -32,11 +32,16 @@ struct PriorityLensView: View {
                 Text("\(list.count)").foregroundStyle(.secondary).font(.caption)
                 Spacer()
             }
-            ForEach(list) { LensCard(task: $0, draggable: true) }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(list) { LensCard(task: $0, draggable: true) }
+                }
+            }
+            .scrollEdgeFade()
             Spacer(minLength: 0)
         }
         .padding(10)
-        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
         .dropDestination(for: String.self) { dropped, _ in
             guard let s = dropped.first, let id = UUID(uuidString: s),

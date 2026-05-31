@@ -88,29 +88,35 @@ struct KanbanLensView: View {
                 .menuStyle(.borderlessButton).frame(width: 22)
             }
 
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, task in
-                LensCard(task: task, draggable: true)
-                    .dropDestination(for: String.self) { dropped, _ in
-                        handleDrop(dropped, into: column.id, at: index); return true
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, task in
+                        LensCard(task: task, draggable: true)
+                            .dropDestination(for: String.self) { dropped, _ in
+                                handleDrop(dropped, into: column.id, at: index); return true
+                            }
                     }
-            }
 
-            Button {
-                NotificationCenter.default.post(name: .openTaskEditor,
-                                                object: TaskEditorView.Mode.create(columnID: column.id))
-            } label: {
-                Text("+ 添加任务")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 8).padding(.vertical, 6)
-                    .contentShape(Rectangle())
+                    Button {
+                        NotificationCenter.default.post(name: .openTaskEditor,
+                                                        object: TaskEditorView.Mode.create(columnID: column.id))
+                    } label: {
+                        Text("+ 添加任务")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 8).padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .buttonStyle(.plain)
+            .scrollEdgeFade()
             Spacer(minLength: 0)
         }
         .padding(10)
-        .frame(width: columnWidth, alignment: .top)
+        .frame(width: columnWidth)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
         .dropDestination(for: String.self) { dropped, _ in
             handleDrop(dropped, into: column.id, at: items.count); return true
@@ -124,20 +130,26 @@ struct KanbanLensView: View {
                 Text("\(archivedTasks.count)").foregroundStyle(.secondary).font(.caption)
                 Spacer()
             }
-            ForEach(archivedTasks) { task in
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                    Text(task.title).strikethrough().foregroundStyle(.secondary).lineLimit(1)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(archivedTasks) { task in
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            Text(task.title).strikethrough().foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                        .draggable(task.id.uuidString)
+                    }
                 }
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
-                .draggable(task.id.uuidString)
             }
+            .scrollEdgeFade()
             Spacer(minLength: 0)
         }
         .padding(10)
-        .frame(width: columnWidth, alignment: .top)
+        .frame(width: columnWidth)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
         .dropDestination(for: String.self) { dropped, _ in
             handleArchiveDrop(dropped); return true

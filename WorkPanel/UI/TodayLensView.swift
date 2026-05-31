@@ -32,5 +32,6 @@ struct TodayLensView: View {
             .frame(maxWidth: .infinity)
             .padding(12)
         }
+        .scrollEdgeFade()
     }
 }

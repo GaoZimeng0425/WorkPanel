@@ -50,6 +50,7 @@ struct MatrixLensView: View {
                     }
                 }
             }
+            .scrollEdgeFade()
             Spacer(minLength: 0)
         }
         .padding(10)
