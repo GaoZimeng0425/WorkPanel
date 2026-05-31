@@ -8,6 +8,14 @@ enum Theme {
     nonisolated static func priority(_ p: Priority) -> Color {
         switch p { case .high: .red; case .medium: .orange; case .low: .gray }
     }
+    nonisolated static func quadrant(important: Bool, urgent: Bool) -> Color {
+        switch (important, urgent) {
+        case (true, true):   priority(.high)   // 红
+        case (true, false):  .blue
+        case (false, true):  priority(.medium) // 橙
+        case (false, false): priority(.low)    // 灰
+        }
+    }
     static let tag: Color = .green
     static let deadline: Color = .blue
     static let recurrence: Color = .purple
