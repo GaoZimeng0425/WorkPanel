@@ -23,4 +23,15 @@ enum CaptureDraft {
         fields.urgencyOverride = parsed.urgencyOverride ?? base.urgencyOverride   // 缺省即保留
         return (fields, body)
     }
+
+    /// 控件为 priority/tags 的唯一来源:用捕获面板控件值覆盖解析结果。
+    /// deadline/recurrence/urgencyOverride 仍来自第一行 token,原样保留。
+    nonisolated static func applyControls(to fields: ParsedInput,
+                                          priority: Priority,
+                                          tags: [String]) -> ParsedInput {
+        var out = fields
+        out.priority = priority
+        out.tags = tags
+        return out
+    }
 }

@@ -67,4 +67,25 @@ struct CaptureDraftTests {
         #expect(r.fields.title == "")
         #expect(r.notes == "")
     }
+
+    @Test func applyControlsOverridesPriorityAndTags() {
+        var fields = ParsedInput()
+        fields.priority = .low                 // 解析自 token 的值
+        fields.tags = ["解析来的"]
+        let out = CaptureDraft.applyControls(to: fields, priority: .high, tags: ["工作"])
+        #expect(out.priority == .high)         // 控件为准
+        #expect(out.tags == ["工作"])          // 控件为准
+    }
+
+    @Test func applyControlsKeepsDeadlineRecurrenceUrgency() {
+        var fields = ParsedInput()
+        fields.deadline = now
+        fields.recurrence = .weekly
+        fields.urgencyOverride = true
+        let out = CaptureDraft.applyControls(to: fields, priority: .medium, tags: [])
+        #expect(out.deadline == now)           // 仍来自 token
+        #expect(out.recurrence == .weekly)
+        #expect(out.urgencyOverride == true)
+        #expect(out.tags == [])                // 控件清空标签
+    }
 }
