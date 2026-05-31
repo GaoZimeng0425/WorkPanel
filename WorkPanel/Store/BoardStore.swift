@@ -89,4 +89,9 @@ final class BoardStore {
             task.columnID = nil
         }
     }
+
+    /// 优先级透镜拖拽落入某列时调用,仅改 priority(无序号语义)。
+    func setPriority(_ task: TodoTask, to priority: Priority) {
+        task.priority = priority
+    }
 }

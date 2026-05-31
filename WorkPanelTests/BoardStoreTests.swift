@@ -170,4 +170,12 @@ struct BoardStoreTests {
 
         #expect([a.boardOrder, b.boardOrder] == ([0, 1] as [Int]))
     }
+
+    @Test func setPriorityChangesPriority() throws {
+        let store = try makeStore()
+        let t = TodoTask(title: "T", priority: .low)
+        store.context.insert(t)
+        store.setPriority(t, to: .high)
+        #expect(t.priority == .high)
+    }
 }
