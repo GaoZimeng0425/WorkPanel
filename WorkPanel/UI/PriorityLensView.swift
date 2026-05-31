@@ -27,9 +27,13 @@ struct PriorityLensView: View {
         let list = items(p)
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Circle().fill(Theme.priority(p)).frame(width: 8, height: 8)
-                Text(Theme.priorityLabel(p)).font(.subheadline).bold()
-                Text("\(list.count)").foregroundStyle(.secondary).font(.caption)
+                StatusDot(color: Theme.priority(p), glow: p == .high, size: 8)
+                Text(Theme.priorityLabel(p))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text("\(list.count)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.textTertiary)
                 Spacer()
             }
             ScrollView(showsIndicators: false) {
@@ -42,7 +46,7 @@ struct PriorityLensView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
+        .noirColumn()
         .deferredDrop { payload in
             guard let id = UUID(uuidString: payload),
                   let task = tasks.first(where: { $0.id == id }) else { return }
