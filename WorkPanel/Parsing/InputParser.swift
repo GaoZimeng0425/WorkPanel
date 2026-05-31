@@ -6,6 +6,7 @@ struct ParsedInput: Equatable, Sendable {
     nonisolated var priority: Priority = .medium
     nonisolated var tags: [String] = []
     nonisolated var recurrence: RecurrenceRule? = nil
+    nonisolated var urgencyOverride: Bool? = nil
 }
 
 struct InputParser: Sendable {
@@ -18,6 +19,10 @@ struct InputParser: Sendable {
     nonisolated private static let priorityMap: [String: Priority] = [
         "!高": .high, "!中": .medium, "!低": .low,
         "!1": .high, "!2": .medium, "!3": .low,
+    ]
+    nonisolated private static let urgencyMap: [String: Bool] = [
+        "!紧急": true, "!urgent": true,
+        "!不紧急": false, "!非紧急": false,
     ]
     // Calendar weekday: Sunday = 1 ... Saturday = 7
     nonisolated private static let weekdayMap: [String: Int] = [
@@ -41,6 +46,8 @@ struct InputParser: Sendable {
         for token in tokens {
             if let p = Self.priorityMap[token] {
                 result.priority = p
+            } else if let u = Self.urgencyMap[token] {
+                result.urgencyOverride = u
             } else if token.hasPrefix("#"), token.count > 1 {
                 result.tags.append(String(token.dropFirst()))
             } else if let (rule, day) = parseRecurrence(token, now: now) {

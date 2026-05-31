@@ -106,4 +106,13 @@ struct InputParserTests {
         let r = InputParser(calendar: calendar).parse("写周报 !低", now: now, defaultPriority: .high)
         #expect(r.priority == .low)
     }
+
+    @Test func urgencyTokens() {
+        #expect(parse("活儿 !紧急").urgencyOverride == true)
+        #expect(parse("活儿 !urgent").urgencyOverride == true)
+        #expect(parse("活儿 !不紧急").urgencyOverride == false)
+        #expect(parse("活儿 !非紧急").urgencyOverride == false)
+        #expect(parse("活儿").urgencyOverride == nil)
+        #expect(parse("活儿 !紧急").title == "活儿")   // token 被吃掉,不进标题
+    }
 }
