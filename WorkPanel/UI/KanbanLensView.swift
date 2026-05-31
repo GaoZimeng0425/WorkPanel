@@ -161,9 +161,15 @@ struct KanbanLensView: View {
 
     private func handleDrop(_ dropped: [String], into columnID: UUID, at index: Int) {
         guard let s = dropped.first, let task = task(for: s) else { return }
-        if task.isCompleted { todoStore.reopen(task) }
-        store.move(task, to: columnID, at: index)
-        try? context.save()
+        // 推迟到系统拖拽影像淡出之后(~0.3s)再落位,避免真实卡片与淡出中的
+        // 拖拽影像在光标处重叠产生残留。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            if task.isCompleted { todoStore.reopen(task) }   // 从归档拖回
+            withAnimation(.easeInOut(duration: 0.18)) {
+                store.move(task, to: columnID, at: index)
+            }
+            try? context.save()
+        }
     }
 
     private func handleArchiveDrop(_ dropped: [String]) {
