@@ -32,7 +32,7 @@ struct TagPickerField: View {
         guard !trimmed.isEmpty else { return existing }
         return existing.filter { $0.localizedCaseInsensitiveContains(trimmed) }
     }
-    private var canCreate: Bool { !trimmed.isEmpty && !existing.contains(trimmed) }
+    private var canCreate: Bool { !trimmed.isEmpty && !existing.contains(trimmed) && !selected.contains(trimmed) }
 
     private var popover: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -56,6 +56,7 @@ struct TagPickerField: View {
         .frame(width: 220)
         .background(Theme.panelBottom)
         .preferredColorScheme(.dark)
+        .onDisappear { filter = "" }
     }
 
     private func row(title: String, checked: Bool, action: @escaping () -> Void) -> some View {
