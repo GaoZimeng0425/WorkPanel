@@ -9,32 +9,36 @@ struct TaskCardView<Trailing: View>: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Button(action: onComplete) { Image(systemName: "circle") }
-                .buttonStyle(.borderless)
+            Button(action: onComplete) {
+                Image(systemName: "circle")
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            .buttonStyle(.borderless)
 
-            Circle()
-                .fill(Theme.priority(task.priority))
-                .frame(width: Theme.priorityDotSize, height: Theme.priorityDotSize)
+            StatusDot(color: Theme.priority(task.priority),
+                      glow: task.priority == .high)
                 .padding(.top, 5)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.system(size: Theme.titleFontSize))
+                    .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
+
                 HStack(spacing: 6) {
                     if let d = task.deadline {
                         Text(d.formatted(date: .omitted, time: .shortened))
-                            .foregroundStyle(d < .now ? .red : Theme.deadline)
+                            .noirBadge(d < .now ? Theme.priority(.high) : Theme.deadline)
                     }
                     if let rule = task.recurrence {
                         Label(Theme.recurrenceLabel(rule), systemImage: "repeat")
-                            .foregroundStyle(Theme.recurrence)
+                            .labelStyle(.titleAndIcon)
+                            .noirBadge(Theme.recurrence)
                     }
                     ForEach(task.tags, id: \.self) { tag in
-                        Text("#\(tag)").foregroundStyle(Theme.tag)
+                        Text("#\(tag)").noirBadge(Theme.tag)
                     }
                 }
-                .font(.system(size: Theme.metaFontSize))
             }
 
             Spacer(minLength: 0)
@@ -42,7 +46,6 @@ struct TaskCardView<Trailing: View>: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor),
-                    in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+        .noirCard()
     }
 }
