@@ -58,6 +58,3 @@ struct BoardView: View {
         .padding(.horizontal, 14).padding(.vertical, 10)
     }
 }
-
-// MARK: - 临时占位(Task 11-13 替换为独立文件实现)
-struct PriorityLensView: View { var body: some View { Color.clear } }
