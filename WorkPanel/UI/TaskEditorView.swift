@@ -20,8 +20,13 @@ struct TaskEditorView: View {
 
     @State private var text: String
     @State private var previewing = false
+    @State private var priority: Priority
+    @State private var selectedTags: [String]
+    @State private var columnID: UUID?
     private let base: ParsedInput
-    private let columnID: UUID?
+
+    @Query(sort: \BoardColumn.order) private var columns: [BoardColumn]
+    @Query private var allTasks: [TodoTask]
 
     init(mode: Mode, onClose: @escaping () -> Void) {
         self.mode = mode
@@ -32,7 +37,9 @@ struct TaskEditorView: View {
             var b = ParsedInput()
             b.priority = AppSettings.defaultPriority
             base = b
-            self.columnID = columnID
+            _priority = State(initialValue: AppSettings.defaultPriority)
+            _selectedTags = State(initialValue: [])
+            _columnID = State(initialValue: columnID)
         case .edit(let task):
             _text = State(initialValue: task.notes.isEmpty ? task.title : task.title + "\n" + task.notes)
             var b = ParsedInput()
@@ -42,8 +49,14 @@ struct TaskEditorView: View {
             b.recurrence = task.recurrence
             b.urgencyOverride = task.urgencyOverride
             base = b
-            self.columnID = task.columnID
+            _priority = State(initialValue: task.priority)
+            _selectedTags = State(initialValue: task.tags)
+            _columnID = State(initialValue: task.columnID)
         }
+    }
+
+    private var allTags: [String] {
+        Array(Set(allTasks.flatMap(\.tags))).sorted()
     }
 
     private var isEditing: Bool {
@@ -82,6 +95,8 @@ struct TaskEditorView: View {
             .frame(height: 220)
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.stroke))
 
+            controls
+
             HStack {
                 Text("第一行为标题 · ⌘↩ 保存 · esc 取消")
                     .font(.caption).foregroundStyle(Theme.textTertiary)
@@ -107,11 +122,72 @@ struct TaskEditorView: View {
         .preferredColorScheme(.dark)
     }
 
+    private var controls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            controlRow("重要程度") {
+                NoirSegmented(
+                    segments: Priority.allCases.map {
+                        .init(value: $0, label: Theme.priorityLabel($0))
+                    },
+                    selection: $priority
+                )
+            }
+            controlRow("状态") { statusMenu }
+            controlRow("标签") {
+                TagPickerField(selected: $selectedTags, existing: allTags)
+            }
+        }
+    }
+
+    private func controlRow<C: View>(_ label: String,
+                                     @ViewBuilder content: () -> C) -> some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.caption).foregroundStyle(Theme.textTertiary)
+                .frame(width: 56, alignment: .leading)
+            content()
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var currentColumnName: String {
+        guard let id = columnID else { return "无" }
+        return columns.first { $0.id == id }?.name ?? "无"
+    }
+
+    private var statusMenu: some View {
+        Menu {
+            Button { columnID = nil } label: {
+                if columnID == nil { Label("无", systemImage: "checkmark") } else { Text("无") }
+            }
+            ForEach(columns) { col in
+                Button { columnID = col.id } label: {
+                    if columnID == col.id { Label(col.name, systemImage: "checkmark") }
+                    else { Text(col.name) }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(currentColumnName)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Theme.textPrimary)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Capsule(style: .continuous).fill(Theme.surfaceEmphasis))
+            .overlay(Capsule(style: .continuous).stroke(Theme.stroke, lineWidth: 0.6))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+
     private func save() {
         let r = resolved
         let title = r.fields.title.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return }
-        var fields = r.fields
+        var fields = CaptureDraft.applyControls(to: r.fields,
+                                                priority: priority,
+                                                tags: selectedTags)
         fields.title = title
 
         let task: TodoTask
@@ -149,22 +225,21 @@ private struct TokenStrip: View {
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(Theme.surface, in: Capsule())
             }
-            if chips.count <= 1 {
-                Text("可在第一行用如「明天 !高 #工作」补充")
+            if chips.isEmpty {
+                Text("可在第一行用如「明天 18:00 每周一」补充")
                     .font(.caption2).foregroundStyle(Theme.textTertiary)
             }
         }
     }
 
     private var chipTexts: [String] {
-        var out: [String] = [Theme.priorityLabel(fields.priority)]
+        var out: [String] = []
         if let u = fields.urgencyOverride {
             out.append(u ? "紧急" : "不紧急")
         }
         if let d = fields.deadline {
             out.append(d.formatted(date: .abbreviated, time: .shortened))
         }
-        out += fields.tags.map { "#\($0)" }
         if let r = fields.recurrence {
             out.append(Theme.recurrenceLabel(r))
         }
