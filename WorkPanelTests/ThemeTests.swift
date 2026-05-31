@@ -17,8 +17,8 @@ struct ThemeTests {
     }
 
     @Test func priorityColors() {
-        #expect(Theme.priority(.high) == .red)
-        #expect(Theme.priority(.medium) == .orange)
-        #expect(Theme.priority(.low) == .gray)
+        #expect(Theme.priority(.high)   == Color(red: 1.0, green: 0.27, blue: 0.23))
+        #expect(Theme.priority(.medium) == Color(red: 1.0, green: 0.70, blue: 0.25))
+        #expect(Theme.priority(.low)    == Color.white.opacity(0.42))
     }
 }
