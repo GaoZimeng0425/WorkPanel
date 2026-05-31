@@ -58,7 +58,9 @@ struct TaskEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(isEditing ? "编辑任务" : "新建任务").font(.headline)
+                Text(isEditing ? "编辑任务" : "新建任务")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
                 Spacer()
                 Picker("", selection: $previewing) {
                     Text("编辑").tag(false)
@@ -79,22 +81,31 @@ struct TaskEditorView: View {
                 }
             }
             .frame(height: 220)
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.stroke))
 
             HStack {
                 Text("第一行为标题 · ⌘↩ 保存 · esc 取消")
-                    .font(.caption).foregroundStyle(.tertiary)
+                    .font(.caption).foregroundStyle(Theme.textTertiary)
                 Spacer()
                 Button("取消") { onClose() }
                 Button("保存") { save() }
                     .buttonStyle(.borderedProminent)
+                    .tint(Theme.accent)
                     .disabled(resolved.fields.title.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
         .padding(18)
         .frame(width: 560)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.panelRadius))
+        .background(
+            LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
+                           startPoint: .top, endPoint: .bottom)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.panelRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.panelRadius, style: .continuous)
+                .stroke(Theme.stroke, lineWidth: 1)
+        )
+        .preferredColorScheme(.dark)
     }
 
     private func save() {
@@ -135,12 +146,13 @@ private struct TokenStrip: View {
             ForEach(chips, id: \.self) { c in
                 Text(c)
                     .font(.caption2)
+                    .foregroundStyle(Theme.textSecondary)
                     .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(.quaternary, in: Capsule())
+                    .background(Theme.surface, in: Capsule())
             }
             if chips.count <= 1 {
                 Text("可在第一行用如「明天 !高 #工作」补充")
-                    .font(.caption2).foregroundStyle(.tertiary)
+                    .font(.caption2).foregroundStyle(Theme.textTertiary)
             }
         }
     }
