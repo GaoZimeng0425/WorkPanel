@@ -81,11 +81,10 @@ struct BoardView: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(selected ? Theme.textPrimary : Theme.textTertiary)
                     .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background {
-                        if selected {
-                            Capsule(style: .continuous).fill(Theme.surfaceEmphasis)
-                        }
-                    }
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(selected ? Theme.surfaceEmphasis : Color.clear)
+                    )
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
