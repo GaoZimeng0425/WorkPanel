@@ -50,6 +50,18 @@ struct CaptureDraftTests {
         #expect(r.fields.tags == ["新"])
     }
 
+    @Test func urgencyTokenSetsOverride() {
+        let r = resolve("改标题 !紧急")
+        #expect(r.fields.urgencyOverride == true)
+    }
+
+    @Test func urgencyAbsenceKeepsBase() {
+        var base = ParsedInput()
+        base.urgencyOverride = true
+        let r = resolve("改标题", base: base)        // 第一行无紧急 token
+        #expect(r.fields.urgencyOverride == true)     // 保留
+    }
+
     @Test func emptyTextYieldsEmptyTitleAndNotes() {
         let r = resolve("")
         #expect(r.fields.title == "")

@@ -20,6 +20,7 @@ enum CaptureDraft {
         fields.deadline = parsed.deadline ?? base.deadline                 // 缺省即保留
         fields.tags = parsed.tags.isEmpty ? base.tags : parsed.tags        // 缺省即保留
         fields.recurrence = parsed.recurrence ?? base.recurrence           // 缺省即保留
+        fields.urgencyOverride = parsed.urgencyOverride ?? base.urgencyOverride   // 缺省即保留
         return (fields, body)
     }
 }
