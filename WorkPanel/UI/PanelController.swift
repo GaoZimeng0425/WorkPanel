@@ -12,7 +12,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         self.panel = panel
         panel.contentView = NSHostingView(rootView: content())
         positionCentered(panel)
-        NSApp.activate(ignoringOtherApps: true)
+        // 不调用 NSApp.activate:捕获面板作为浮层出现,不抢占当前 App 的 active 状态。
+        // nonactivatingPanel + canBecomeKey 仍能成为 key 并接收文本输入(与 BoardPanelController 一致)。
         panel.makeKeyAndOrderFront(nil)
     }
 

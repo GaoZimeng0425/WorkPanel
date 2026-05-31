@@ -14,7 +14,9 @@ struct MarkdownTextEditor: NSViewRepresentable {
         textView.delegate = context.coordinator
         textView.onSave = onSave
         textView.onCancel = onCancel
-        textView.isRichText = false
+        // 富文本模式:NSTextView 才会渲染 textStorage 里逐段的字体/颜色属性。
+        // 纯文本模式(isRichText=false)会用统一字体渲染,忽略 markdown 行内样式。
+        // 保存时只取 .string(纯文本),所以富文本不会污染存储的备注。
         textView.allowsUndo = true
         textView.font = MarkdownStyler.baseFont
         textView.drawsBackground = false
@@ -67,6 +69,16 @@ final class CaptureTextView: NSTextView {
 
     override func cancelOperation(_ sender: Any?) {  // esc
         onCancel?()
+    }
+
+    // 弹窗出现即把光标聚焦到文本域(SwiftUI 不会自动让内嵌的 NSTextView 成为第一响应者)。
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let window = self.window else { return }
+            window.makeFirstResponder(self)
+        }
     }
 }
 
