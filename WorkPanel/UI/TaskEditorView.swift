@@ -126,7 +126,7 @@ struct TaskEditorView: View {
         VStack(alignment: .leading, spacing: 10) {
             controlRow("重要程度") {
                 NoirSegmented(
-                    segments: Priority.allCases.map {
+                    segments: Priority.allCases.reversed().map {
                         .init(value: $0, label: Theme.priorityLabel($0))
                     },
                     selection: $priority
@@ -171,11 +171,8 @@ struct TaskEditorView: View {
                 Text(currentColumnName)
                 Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
             }
-            .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(Theme.textPrimary)
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(Capsule(style: .continuous).fill(Theme.surfaceEmphasis))
-            .overlay(Capsule(style: .continuous).stroke(Theme.stroke, lineWidth: 0.6))
+            .noirPickerPill()
         }
         .menuStyle(.borderlessButton)
         .fixedSize()

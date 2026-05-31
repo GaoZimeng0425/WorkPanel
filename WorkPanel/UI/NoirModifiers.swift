@@ -28,6 +28,15 @@ extension View {
         )
     }
 
+    /// 下拉/选择触发器的 pill 外观:11 semibold + surfaceEmphasis 底 + stroke 细描边。
+    /// 前景色由调用方决定(选中态/占位态不同),故不并入此处。
+    func noirPickerPill() -> some View {
+        font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Capsule(style: .continuous).fill(Theme.surfaceEmphasis))
+            .overlay(Capsule(style: .continuous).stroke(Theme.stroke, lineWidth: 0.6))
+    }
+
     /// 元数据 capsule:10 bold rounded,tint 前景 + 低透明 tint 底。用于 Text / Label。
     func noirBadge(_ tint: Color) -> some View {
         font(.system(size: 10, weight: .bold, design: .rounded))

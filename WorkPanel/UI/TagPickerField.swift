@@ -18,10 +18,7 @@ struct TagPickerField: View {
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
             }
-            .font(.system(size: 11, weight: .semibold))
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(Capsule(style: .continuous).fill(Theme.surfaceEmphasis))
-            .overlay(Capsule(style: .continuous).stroke(Theme.stroke, lineWidth: 0.6))
+            .noirPickerPill()
         }
         .buttonStyle(.plain)
         .popover(isPresented: $showing, arrowEdge: .bottom) { popover }
