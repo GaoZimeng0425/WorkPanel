@@ -71,20 +71,24 @@ struct KanbanLensView: View {
         let items = activeTasks(in: column)
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(column.name).font(.subheadline).bold()
-                Text("\(items.count)").foregroundStyle(.secondary).font(.caption)
+                Text(column.name)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text("\(items.count)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.textTertiary)
                 Spacer()
                 Button {
                     NotificationCenter.default.post(name: .openTaskEditor,
                                                     object: TaskEditorView.Mode.create(columnID: column.id))
-                } label: { Image(systemName: "plus") }
+                } label: { Image(systemName: "plus").foregroundStyle(Theme.textTertiary) }
                 .buttonStyle(.borderless)
                 .frame(width: 22)
                 Menu {
                     Button("重命名") { renameText = column.name; renaming = column }
                     Button("删除", role: .destructive) { store.delete(column); try? context.save() }
                         .disabled(columns.count <= 1)
-                } label: { Image(systemName: "ellipsis") }
+                } label: { Image(systemName: "ellipsis").foregroundStyle(Theme.textTertiary) }
                 .menuStyle(.borderlessButton).frame(width: 22)
             }
 
@@ -101,7 +105,7 @@ struct KanbanLensView: View {
                     } label: {
                         Text("+ 添加任务")
                             .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.accentText)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 8).padding(.vertical, 6)
                             .contentShape(Rectangle())
@@ -115,15 +119,19 @@ struct KanbanLensView: View {
         .padding(10)
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
+        .noirColumn()
         .deferredDrop { handleDrop($0, into: column.id, at: items.count) }
     }
 
     private var archiveColumnView: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("归档").font(.subheadline).bold()
-                Text("\(archivedTasks.count)").foregroundStyle(.secondary).font(.caption)
+                Text("归档")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text("\(archivedTasks.count)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.textTertiary)
                 Spacer()
             }
             ScrollView(showsIndicators: false) {
@@ -131,11 +139,12 @@ struct KanbanLensView: View {
                     ForEach(archivedTasks) { task in
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                            Text(task.title).strikethrough().foregroundStyle(.secondary).lineLimit(1)
+                            Text(task.title).strikethrough()
+                                .foregroundStyle(Theme.textMuted).lineLimit(1)
                         }
                         .padding(8)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                        .noirCard()
                         .draggable(task.id.uuidString)
                     }
                 }
@@ -146,17 +155,18 @@ struct KanbanLensView: View {
         .padding(10)
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
+        .noirColumn()
         .deferredDrop { handleArchiveDrop($0) }
     }
 
     private var addColumnButton: some View {
         Button { addingColumn = true } label: {
-            Image(systemName: "plus").font(.title3).frame(width: 44, height: 60)
+            Image(systemName: "plus").font(.title3)
+                .foregroundStyle(Theme.textTertiary)
+                .frame(width: 44, height: 60)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(.secondary)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+        .noirColumn()
         .frame(alignment: .top)
     }
 
