@@ -81,8 +81,8 @@ struct KanbanLensView: View {
                 Button {
                     NotificationCenter.default.post(name: .openTaskEditor,
                                                     object: TaskEditorView.Mode.create(columnID: column.id))
-                } label: { Image(systemName: "plus").foregroundStyle(Theme.textTertiary) }
-                .buttonStyle(.borderless)
+                } label: { Image(systemName: "plus") }
+                .buttonStyle(NoirIconButtonStyle())
                 .frame(width: 22)
                 Menu {
                     Button("重命名") { renameText = column.name; renaming = column }
@@ -162,10 +162,9 @@ struct KanbanLensView: View {
     private var addColumnButton: some View {
         Button { addingColumn = true } label: {
             Image(systemName: "plus").font(.title3)
-                .foregroundStyle(Theme.textTertiary)
                 .frame(width: 44, height: 60)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(NoirIconButtonStyle())
         .noirColumn()
         .frame(alignment: .top)
     }

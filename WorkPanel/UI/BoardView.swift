@@ -57,14 +57,13 @@ struct BoardView: View {
 
             Button { NotificationCenter.default.post(name: .openSettings, object: nil) } label: {
                 Image(systemName: "gearshape")
-                    .foregroundStyle(Theme.textTertiary)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(NoirIconButtonStyle())
+            .accessibilityLabel("设置")
             Button { onClose() } label: {
                 Image(systemName: "chevron.up")
-                    .foregroundStyle(Theme.textTertiary)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(NoirIconButtonStyle())
             .help("收起 (esc)")
             .accessibilityLabel("收起")
         }
@@ -72,30 +71,12 @@ struct BoardView: View {
     }
 
     private var lensTabStrip: some View {
-        HStack(spacing: 4) {
-            ForEach(BoardViewMode.allCases) { m in
-                let selected = m.rawValue == modeRaw
-                Button {
-                    withAnimation(.spring(duration: 0.28, bounce: 0.06)) { modeRaw = m.rawValue }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: icon(for: m))
-                        Text(m.label)
-                    }
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(selected ? Theme.textPrimary : Theme.textTertiary)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(selected ? Theme.surfaceEmphasis : Color.clear)
-                    )
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(3)
-        .background(Capsule(style: .continuous).fill(Theme.surfaceSubtle))
+        NoirSegmented(
+            segments: BoardViewMode.allCases.map {
+                .init(value: $0.rawValue, label: $0.label, systemImage: icon(for: $0))
+            },
+            selection: $modeRaw
+        )
     }
 
     private func icon(for m: BoardViewMode) -> String {

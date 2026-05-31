@@ -62,13 +62,12 @@ struct TaskEditorView: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.textPrimary)
                 Spacer()
-                Picker("", selection: $previewing) {
-                    Text("编辑").tag(false)
-                    Text("预览").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 140)
+                NoirSegmented(
+                    segments: [.init(value: false, label: "编辑"),
+                               .init(value: true, label: "预览")],
+                    selection: $previewing
+                )
+                .fixedSize()
             }
 
             TokenStrip(fields: resolved.fields)
@@ -88,9 +87,9 @@ struct TaskEditorView: View {
                     .font(.caption).foregroundStyle(Theme.textTertiary)
                 Spacer()
                 Button("取消") { onClose() }
+                    .buttonStyle(NoirPillButtonStyle())
                 Button("保存") { save() }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accent)
+                    .buttonStyle(NoirPillButtonStyle(prominent: true))
                     .disabled(resolved.fields.title.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
