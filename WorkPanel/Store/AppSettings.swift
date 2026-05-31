@@ -8,6 +8,7 @@ enum AppSettings {
         static let appearance = "appearance"
         static let notificationSound = "notificationSound"
         static let defaultPriority = "defaultPriority"
+        static let boardViewMode = "boardViewMode"
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
@@ -17,6 +18,7 @@ enum AppSettings {
             Key.appearance: Appearance.system.rawValue,
             Key.notificationSound: true,
             Key.defaultPriority: Priority.medium.rawValue,
+            Key.boardViewMode: BoardViewMode.kanban.rawValue,
         ])
     }
 
