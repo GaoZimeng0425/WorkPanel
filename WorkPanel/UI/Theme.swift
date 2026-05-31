@@ -58,6 +58,7 @@ enum Theme {
     // MARK: 尺寸 token (pt)
     static let cardRadius: CGFloat = 8
     static let panelRadius: CGFloat = 14
+    static let columnRadius: CGFloat = 10
     static let titleFontSize: CGFloat = 13
     static let metaFontSize: CGFloat = 11
     static let priorityDotSize: CGFloat = 7

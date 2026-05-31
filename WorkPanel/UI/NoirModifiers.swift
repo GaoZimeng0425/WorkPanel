@@ -19,10 +19,10 @@ extension View {
     /// 列/象限容器底:安静 surface 填充 + stroke 细描边。
     func noirColumn() -> some View {
         background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.columnRadius, style: .continuous)
                 .fill(Theme.surface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.columnRadius, style: .continuous)
                         .stroke(Theme.stroke, lineWidth: 0.6)
                 )
         )
