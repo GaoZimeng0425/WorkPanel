@@ -32,18 +32,24 @@ struct MatrixLensView: View {
         let color = Theme.quadrant(important: important, urgent: urgent)
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Circle().fill(color).frame(width: 8, height: 8)
+                StatusDot(color: color, size: 8)
                 Text(title(important: important, urgent: urgent))
-                    .font(.subheadline).bold().foregroundStyle(color)
-                Text("\(items.count)").foregroundStyle(.secondary).font(.caption)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(color)
+                Text("\(items.count)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.textTertiary)
                 Spacer()
-                Text(action).font(.caption).foregroundStyle(.secondary)
+                Text(action)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.textTertiary)
             }
-            Rectangle().fill(color.opacity(0.4)).frame(height: 1)
+            Rectangle().fill(color.opacity(0.45)).frame(height: 1)
             ScrollView {
                 VStack(spacing: 8) {
                     if items.isEmpty {
-                        Text("空").font(.caption).foregroundStyle(.tertiary)
+                        Text("空").font(.system(size: 11))
+                            .foregroundStyle(Theme.textMuted)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         ForEach(items) { LensCard(task: $0) }
@@ -55,7 +61,7 @@ struct MatrixLensView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
+        .noirColumn()
     }
 
     private func title(important: Bool, urgent: Bool) -> String {
