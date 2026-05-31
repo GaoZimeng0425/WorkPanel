@@ -60,9 +60,13 @@ struct BoardView: View {
                     .foregroundStyle(Theme.textTertiary)
             }
             .buttonStyle(.borderless)
-            Text("esc 收起")
-                .font(.system(size: 11))
-                .foregroundStyle(Theme.textMuted)
+            Button { onClose() } label: {
+                Image(systemName: "chevron.up")
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            .buttonStyle(.borderless)
+            .help("收起 (esc)")
+            .accessibilityLabel("收起")
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
     }
