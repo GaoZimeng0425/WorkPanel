@@ -16,6 +16,7 @@ final class TodoTask {
     var recurrenceRaw: String?
     var columnID: UUID?
     var boardOrder: Int
+    var urgencyOverride: Bool?
 
     var priority: Priority {
         get { Priority(rawValue: priorityRaw) ?? .medium }
@@ -26,12 +27,23 @@ final class TodoTask {
         set { recurrenceRaw = newValue?.rawValue }
     }
 
+    static let urgentWindow: TimeInterval = 48 * 3600   // 48 小时内(含逾期)视为紧急
+
+    var isImportant: Bool { priority != .low }          // 高/中 = 重要
+
+    func isUrgent(asOf now: Date = .now) -> Bool {
+        if let o = urgencyOverride { return o }
+        guard let d = deadline else { return false }
+        return d <= now.addingTimeInterval(Self.urgentWindow)
+    }
+
     init(title: String,
          notes: String = "",
          deadline: Date? = nil,
          priority: Priority = .medium,
          tags: [String] = [],
          recurrence: RecurrenceRule? = nil,
+         urgencyOverride: Bool? = nil,
          createdAt: Date = .now,
          columnID: UUID? = nil,
          boardOrder: Int = 0) {
@@ -48,5 +60,6 @@ final class TodoTask {
         self.recurrenceRaw = recurrence?.rawValue
         self.columnID = columnID
         self.boardOrder = boardOrder
+        self.urgencyOverride = urgencyOverride
     }
 }
