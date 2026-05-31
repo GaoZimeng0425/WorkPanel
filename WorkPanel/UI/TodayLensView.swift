@@ -20,10 +20,16 @@ struct TodayLensView: View {
         ScrollView {
             VStack(spacing: 8) {
                 if items.isEmpty {
-                    Text("今日无到期任务 🎉")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 48)
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(Theme.textTertiary)
+                        Text("今日无到期任务")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 48)
                 } else {
                     ForEach(items) { LensCard(task: $0) }
                 }

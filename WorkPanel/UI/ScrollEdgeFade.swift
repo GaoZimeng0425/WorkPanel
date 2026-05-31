@@ -6,13 +6,14 @@ import SwiftUI
 /// 系统的 `scrollEdgeEffectStyle` 仅在滚动内容贴着 bar / safe area 时渲染,在面板内
 /// 这种无工具栏的裁剪滚动视图上不可见,故自行实现。
 extension View {
-    func scrollEdgeFade(height: CGFloat = 22) -> some View {
-        modifier(ScrollEdgeFade(bandHeight: height))
+    func scrollEdgeFade(height: CGFloat = 22, fade: Color = Theme.panelBottom) -> some View {
+        modifier(ScrollEdgeFade(bandHeight: height, fade: fade))
     }
 }
 
 private struct ScrollEdgeFade: ViewModifier {
     let bandHeight: CGFloat
+    let fade: Color
     @State private var moreAbove = false
     @State private var moreBelow = false
 
@@ -35,7 +36,7 @@ private struct ScrollEdgeFade: ViewModifier {
 
     private func band(top: Bool) -> some View {
         Rectangle()
-            .fill(.ultraThinMaterial)
+            .fill(fade)
             .mask(LinearGradient(colors: [.black, .clear],
                                  startPoint: top ? .top : .bottom,
                                  endPoint: top ? .bottom : .top))
