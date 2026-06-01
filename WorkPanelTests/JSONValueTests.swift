@@ -14,6 +14,12 @@ struct JSONValueTests {
         #expect(v["missing"] == nil)
     }
 
+    @Test func intValueRejectsFractionalAndOverflow() {
+        #expect(JSONValue.number(3).intValue == 3)
+        #expect(JSONValue.number(3.9).intValue == nil)    // fractional → nil
+        #expect(JSONValue.number(1e20).intValue == nil)   // overflow → nil
+    }
+
     @Test func contagiousNullVsAbsent() throws {
         let data = Data(#"{"deadline":null}"#.utf8)
         let v = try JSONDecoder().decode(JSONValue.self, from: data)

@@ -36,7 +36,13 @@ enum JSONValue: Codable, Equatable {
 
 extension JSONValue {
     nonisolated var stringValue: String? { if case .string(let s) = self { return s }; return nil }
-    nonisolated var intValue: Int? { if case .number(let n) = self { return Int(n) }; return nil }
+    nonisolated var intValue: Int? {
+        guard case .number(let n) = self,
+              n == n.rounded(),          // reject fractional numbers
+              let i = Int(exactly: n)     // reject overflow (returns nil instead of trapping)
+        else { return nil }
+        return i
+    }
     nonisolated var boolValue: Bool? { if case .bool(let b) = self { return b }; return nil }
     nonisolated var arrayValue: [JSONValue]? { if case .array(let a) = self { return a }; return nil }
     nonisolated var objectValue: [String: JSONValue]? { if case .object(let o) = self { return o }; return nil }
