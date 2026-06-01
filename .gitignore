@@ -1,1 +1,9 @@
 .superpowers/
+
+.build/
+.DS_Store
+
+.idea/
+.vscode/
+.codegraph/
+.claude/
