@@ -12,8 +12,10 @@ struct TaskCardView<Trailing: View>: View {
             Button(action: onComplete) {
                 Image(systemName: "circle")
                     .foregroundStyle(Theme.textTertiary)
+                    .frame(width: 18, height: 18)
+                    .contentShape(Circle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
 
             StatusDot(color: Theme.priority(task.priority),
                       glow: task.priority == .high)
@@ -29,14 +31,22 @@ struct TaskCardView<Trailing: View>: View {
                     if let d = task.deadline {
                         Text(d.formatted(date: .omitted, time: .shortened))
                             .noirBadge(d < .now ? Theme.priority(.high) : Theme.deadline)
+                            .lineLimit(1)
                     }
                     if let rule = task.recurrence {
                         Label(Theme.recurrenceLabel(rule), systemImage: "repeat")
                             .labelStyle(.titleAndIcon)
                             .noirBadge(Theme.recurrence)
+                            .lineLimit(1)
                     }
-                    ForEach(task.tags, id: \.self) { tag in
+                    ForEach(Array(task.tags.prefix(2)), id: \.self) { tag in
                         Text("#\(tag)").noirBadge(Theme.tag)
+                            .lineLimit(1)
+                    }
+                    if task.tags.count > 2 {
+                        Text("+\(task.tags.count - 2)")
+                            .noirBadge(Theme.textTertiary)
+                            .lineLimit(1)
                     }
                 }
             }

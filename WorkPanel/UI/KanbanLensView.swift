@@ -12,6 +12,7 @@ struct KanbanLensView: View {
     @State private var renameText = ""
     @State private var addingColumn = false
     @State private var newColumnText = ""
+    @State private var actionColumnID: UUID?
 
     private var store: BoardStore { BoardStore(context: context) }
     private var todoStore: TodoStore { TodoStore(context: context) }
@@ -84,19 +85,28 @@ struct KanbanLensView: View {
                 } label: { Image(systemName: "plus") }
                 .buttonStyle(NoirIconButtonStyle())
                 .frame(width: 22)
-                Menu {
-                    Button("重命名") { renameText = column.name; renaming = column }
-                    Button("删除", role: .destructive) { store.delete(column); try? context.save() }
-                        .disabled(columns.count <= 1)
-                } label: { Image(systemName: "ellipsis").foregroundStyle(Theme.textTertiary) }
-                .menuStyle(.borderlessButton).frame(width: 22)
+                Button { actionColumnID = column.id } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(Theme.textTertiary)
+                        .noirPickerPill()
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: Binding(get: { actionColumnID == column.id },
+                                              set: { if !$0 { actionColumnID = nil } }),
+                         arrowEdge: .bottom) {
+                    columnActionsPopover(for: column)
+                }
             }
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) { index, task in
-                        LensCard(task: task, draggable: true)
-                            .deferredDrop { handleDrop($0, into: column.id, at: index) }
+                    if items.isEmpty {
+                        emptyColumnText("拖入任务或点下方添加")
+                    } else {
+                        ForEach(Array(items.enumerated()), id: \.element.id) { index, task in
+                            LensCard(task: task, draggable: true)
+                                .deferredDrop { handleDrop($0, into: column.id, at: index) }
+                        }
                     }
 
                     Button {
@@ -136,16 +146,20 @@ struct KanbanLensView: View {
             }
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(archivedTasks) { task in
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                            Text(task.title).strikethrough()
-                                .foregroundStyle(Theme.textMuted).lineLimit(1)
+                    if archivedTasks.isEmpty {
+                        emptyColumnText("完成的任务会在这里")
+                    } else {
+                        ForEach(archivedTasks) { task in
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success)
+                                Text(task.title).strikethrough()
+                                    .foregroundStyle(Theme.textMuted).lineLimit(1)
+                            }
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .noirCard()
+                            .draggable(task.id.uuidString)
                         }
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .noirCard()
-                        .draggable(task.id.uuidString)
                     }
                 }
             }
@@ -164,9 +178,59 @@ struct KanbanLensView: View {
             Image(systemName: "plus").font(.title3)
                 .frame(width: 44, height: 60)
         }
-        .buttonStyle(NoirIconButtonStyle())
+        .buttonStyle(NoirIconButtonStyle(size: 44))
         .noirColumn()
         .frame(alignment: .top)
+    }
+
+    private func columnActionsPopover(for column: BoardColumn) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            columnActionRow("重命名", systemImage: "pencil") {
+                renameText = column.name
+                renaming = column
+            }
+            Rectangle().fill(Theme.stroke).frame(height: 1)
+                .padding(.vertical, 4)
+            columnActionRow("删除", systemImage: "trash", destructive: true, disabled: columns.count <= 1) {
+                store.delete(column)
+                try? context.save()
+            }
+        }
+        .padding(8)
+        .frame(width: 150)
+        .background(Theme.panelBottom)
+        .preferredColorScheme(.dark)
+    }
+
+    private func columnActionRow(_ title: String,
+                                 systemImage: String,
+                                 destructive: Bool = false,
+                                 disabled: Bool = false,
+                                 action: @escaping () -> Void) -> some View {
+        Button {
+            guard !disabled else { return }
+            actionColumnID = nil
+            action()
+        } label: {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(disabled ? Theme.textMuted : (destructive ? Theme.priority(.high) : Theme.textSecondary))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 7)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+    }
+
+    private func emptyColumnText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(Theme.textMuted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 12)
     }
 
     private func task(for uuidString: String) -> TodoTask? {

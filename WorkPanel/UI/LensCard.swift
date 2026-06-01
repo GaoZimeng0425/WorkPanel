@@ -25,6 +25,7 @@ struct LensCard: View {
                     try? context.save()
                 }
             }
+            .accessibilityIdentifier("card-\(task.title)")
 
         if draggable {
             card.draggable(task.id.uuidString)

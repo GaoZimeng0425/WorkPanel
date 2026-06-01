@@ -38,7 +38,16 @@ struct PriorityLensView: View {
             }
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(list) { LensCard(task: $0, draggable: true) }
+                    if list.isEmpty {
+                        Text("暂无任务")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(Theme.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 12)
+                    } else {
+                        ForEach(list) { LensCard(task: $0, draggable: true) }
+                    }
                 }
             }
             .scrollEdgeFade()

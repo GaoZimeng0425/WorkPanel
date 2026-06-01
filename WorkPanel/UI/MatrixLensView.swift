@@ -8,6 +8,8 @@ struct MatrixLensView: View {
 
     private var active: [TodoTask] { tasks.filter { !$0.isCompleted } }
 
+    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
+
     private func bucket(important: Bool, urgent: Bool) -> [TodoTask] {
         active.filter { $0.isImportant == important && $0.isUrgent() == urgent }
               .sorted { $0.boardOrder < $1.boardOrder }
@@ -46,12 +48,12 @@ struct MatrixLensView: View {
             }
             Rectangle().fill(color.opacity(0.45)).frame(height: 1)
             ScrollView {
-                VStack(spacing: 8) {
-                    if items.isEmpty {
-                        Text("空").font(.system(size: 11))
-                            .foregroundStyle(Theme.textMuted)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
+                if items.isEmpty {
+                    Text("空").font(.system(size: 11))
+                        .foregroundStyle(Theme.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 8) {
                         ForEach(items) { LensCard(task: $0) }
                     }
                 }
