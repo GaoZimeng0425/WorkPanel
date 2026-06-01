@@ -59,4 +59,18 @@ struct PlanStoreTests {
         context.delete(task)
         #expect(store.committedTasks(on: day).isEmpty)   // ID 取不到 → 跳过,不崩
     }
+
+    @Test func needsPlanningWhenNeverPlanned() {
+        #expect(PlanStore.needsPlanning(lastPlanned: nil, now: day, calendar: calendar))
+    }
+
+    @Test func needsPlanningWhenLastPlannedYesterday() {
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: day)!
+        #expect(PlanStore.needsPlanning(lastPlanned: yesterday, now: day, calendar: calendar))
+    }
+
+    @Test func noPlanningWhenAlreadyPlannedToday() {
+        let earlierToday = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 7))!
+        #expect(!PlanStore.needsPlanning(lastPlanned: earlierToday, now: day, calendar: calendar))
+    }
 }

@@ -9,6 +9,7 @@ enum AppSettings {
         static let notificationSound = "notificationSound"
         static let defaultPriority = "defaultPriority"
         static let boardViewMode = "boardViewMode"
+        static let lastPlannedDay = "lastPlannedDay"   // Double: 上次开工规划日的 timeIntervalSinceReferenceDate
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。

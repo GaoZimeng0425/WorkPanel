@@ -47,4 +47,10 @@ final class PlanStore {
         let byID = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
         return p.committedTaskIDs.compactMap { byID[$0] }
     }
+
+    /// 是否该触发开工规划:从未规划过,或上次规划不在今天。
+    nonisolated static func needsPlanning(lastPlanned: Date?, now: Date, calendar: Calendar) -> Bool {
+        guard let lastPlanned else { return true }
+        return !calendar.isDate(lastPlanned, inSameDayAs: now)
+    }
 }
