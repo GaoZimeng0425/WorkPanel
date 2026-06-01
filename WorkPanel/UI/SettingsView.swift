@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import KeyboardShortcuts
 
@@ -9,8 +10,41 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.defaultPriority) private var defaultPriority = Priority.medium.rawValue
     @AppStorage(AppSettings.Key.reminderLeadMinutes) private var leadMinutes = 0
     @AppStorage(AppSettings.Key.notificationSound) private var sound = true
+    @AppStorage(AppSettings.Key.mcpEnabled) private var mcpEnabled = false
+    @AppStorage(AppSettings.Key.mcpPort) private var mcpPort = 8787
+    @State private var mcpToken = AppSettings.mcpToken
 
     private let leadOptions = [0, 5, 15, 30]
+
+    private var mcpURL: String { "http://127.0.0.1:\(mcpPort)/mcp" }
+
+    /// 可直接粘贴到终端运行的 Claude Code 注册命令。
+    private var mcpAddCommand: String {
+        "claude mcp add --transport http workpanel \(mcpURL) --header \"Authorization: Bearer \(mcpToken)\""
+    }
+
+    /// mcpServers 风格的 JSON,适合粘贴到 .mcp.json / claude_desktop_config.json。
+    private var mcpJSONConfig: String {
+        """
+        {
+          "mcpServers": {
+            "workpanel": {
+              "type": "http",
+              "url": "\(mcpURL)",
+              "headers": {
+                "Authorization": "Bearer \(mcpToken)"
+              }
+            }
+          }
+        }
+        """
+    }
+
+    private func copy(_ string: String, notice: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(string, forType: .string)
+        Notice.show(notice)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -84,6 +118,46 @@ struct SettingsView: View {
                 divider
                 row("通知声音", systemImage: "speaker.wave.2") {
                     Toggle("", isOn: $sound).labelsHidden().toggleStyle(.switch)
+                }
+            }
+
+            section("AI 接入 (MCP)", systemImage: "sparkles") {
+                row("启用本地服务", systemImage: "network") {
+                    Toggle("", isOn: $mcpEnabled)
+                        .labelsHidden().toggleStyle(.switch)
+                        .onChange(of: mcpEnabled) { _, _ in
+                            NotificationCenter.default.post(name: .mcpSettingsChanged, object: nil)
+                        }
+                }
+                divider
+                row("端口", systemImage: "number") {
+                    TextField("", value: $mcpPort, format: .number.grouping(.never))
+                        .labelsHidden().frame(width: 80)
+                        .multilineTextAlignment(.trailing)
+                        .onSubmit {
+                            if mcpPort < 1 || mcpPort > 65535 { mcpPort = 8787 }
+                            NotificationCenter.default.post(name: .mcpSettingsChanged, object: nil)
+                        }
+                }
+                divider
+                row("连接地址", systemImage: "link") {
+                    Text(mcpURL)
+                        .font(.callout.monospaced()).foregroundStyle(Theme.textSecondary)
+                        .textSelection(.enabled)
+                }
+                divider
+                row("访问令牌", systemImage: "key") {
+                    Button("复制令牌") { copy(mcpToken, notice: "已复制访问令牌") }
+                        .buttonStyle(NoirPillButtonStyle())
+                }
+                divider
+                row("一键复制设置", systemImage: "doc.on.doc") {
+                    HStack(spacing: 8) {
+                        Button("复制命令") { copy(mcpAddCommand, notice: "已复制注册命令") }
+                            .buttonStyle(NoirPillButtonStyle())
+                        Button("复制 JSON") { copy(mcpJSONConfig, notice: "已复制 JSON 配置") }
+                            .buttonStyle(NoirPillButtonStyle())
+                    }
                 }
             }
 

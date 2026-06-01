@@ -64,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let board = BoardPanelController()
     private let settings = SettingsPanelController()
     private let scheduler = ReminderScheduler()
+    private var mcpServer: MCPServer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
@@ -77,6 +78,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let mode = note.object as? TaskEditorView.Mode else { return }
             MainActor.assumeIsolated { self?.showEditor(mode) }
         }
+        NotificationCenter.default.addObserver(forName: .mcpSettingsChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restartMCP() }
+        }
+        startOrStopMCP()
         Task { _ = await scheduler.requestAuthorization() }
 
         if SharedModel.isUITesting {
@@ -109,5 +114,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.toggle {
             SettingsView(onClose: { [weak self] in self?.settings.hide() })
         }
+    }
+
+    private func startOrStopMCP() {
+        if AppSettings.mcpEnabled {
+            let handlers = MCPToolHandlers(context: SharedModel.container.mainContext)
+            let server = MCPServer(port: UInt16(AppSettings.mcpPort),
+                                   token: AppSettings.mcpToken, handlers: handlers)
+            server.start()
+            mcpServer = server
+        } else {
+            mcpServer?.stop()
+            mcpServer = nil
+        }
+    }
+
+    private func restartMCP() {
+        mcpServer?.stop()
+        mcpServer = nil
+        startOrStopMCP()
     }
 }

@@ -10,6 +10,9 @@ enum AppSettings {
         static let defaultPriority = "defaultPriority"
         static let boardViewMode = "boardViewMode"
         static let lastPlannedDay = "lastPlannedDay"   // Double: 上次开工规划日的 timeIntervalSinceReferenceDate
+        static let mcpEnabled = "mcpEnabled"
+        static let mcpPort = "mcpPort"
+        static let mcpToken = "mcpToken"
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
@@ -20,6 +23,8 @@ enum AppSettings {
             Key.notificationSound: true,
             Key.defaultPriority: Priority.medium.rawValue,
             Key.boardViewMode: BoardViewMode.kanban.rawValue,
+            Key.mcpEnabled: false,
+            Key.mcpPort: 8787,
         ])
     }
 
@@ -34,6 +39,19 @@ enum AppSettings {
     }
     static var appearance: Appearance {
         Appearance(rawValue: UserDefaults.standard.string(forKey: Key.appearance) ?? "") ?? .system
+    }
+    static var mcpEnabled: Bool {
+        UserDefaults.standard.bool(forKey: Key.mcpEnabled)
+    }
+    static var mcpPort: Int {
+        let p = UserDefaults.standard.integer(forKey: Key.mcpPort)
+        return p == 0 ? 8787 : p
+    }
+    static var mcpToken: String {
+        if let t = UserDefaults.standard.string(forKey: Key.mcpToken), !t.isEmpty { return t }
+        let t = UUID().uuidString
+        UserDefaults.standard.set(t, forKey: Key.mcpToken)
+        return t
     }
 }
 
