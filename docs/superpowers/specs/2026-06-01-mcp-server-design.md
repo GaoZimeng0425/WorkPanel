@@ -20,7 +20,7 @@ app, served over localhost HTTP.
 | Implementation | Hand-rolled, zero new dependencies (`Network.framework` + `Codable`) |
 | Operation scope | Read, create, modify, state transitions |
 | Security | `127.0.0.1` binding **and** Bearer token |
-| Reminder rescheduling | **Out of scope for v1** (see §7) |
+| Reminder (notification) sync | **In v1** — handlers mirror the UI's `schedule`/`cancel` behavior (see §4.1) |
 | Token storage | `UserDefaults` (via `AppSettings`) |
 
 ## 1. Architecture
@@ -68,7 +68,7 @@ All under a new `WorkPanel/MCP/` group.
 | `MCPServer.swift` | `NWListener` lifecycle (start/stop), accept connections, read one HTTP/1.1 request, write one HTTP response. Bearer-token check → 401. No MCP semantics. |
 | `HTTPMessage.swift` | Minimal HTTP/1.1 request parse (method, path, headers, body) + response build. Pure, unit-testable. |
 | `MCPDispatcher.swift` | JSON-RPC 2.0 layer. Routes `initialize`, `notifications/initialized`, `tools/list`, `tools/call`. Owns the tool catalog (names + JSON Schemas). Returns a `Codable` JSON-RPC response. |
-| `MCPToolHandlers.swift` | The `@MainActor` task operations — bridges tool args → `TodoStore`/`BoardStore`, maps results to DTOs. The only file that touches SwiftData. |
+| `MCPToolHandlers.swift` | The `@MainActor` task operations — bridges tool args → `TodoStore`/`BoardStore`, drives `ReminderScheduler` (notification sync, §4.1), maps results to DTOs. The only file that touches SwiftData. |
 | `TaskDTO.swift` | `Codable` DTOs (`TaskDTO`, `ColumnDTO`) — the external JSON contract, decoupled from the `@Model`. |
 
 `MCPServer`/`HTTPMessage` are domain-ignorant (reusable transport). `MCPToolHandlers` is
@@ -131,6 +131,34 @@ Each `tools/call` returns MCP content blocks: a single `type: "text"` block whos
 the JSON-encoded DTO (or array/object). Tool-level failures (e.g. unknown id, bad date)
 return `isError: true` with a human-readable message, not a transport-level error.
 
+### 4.1 Notification sync
+
+`MCPToolHandlers` holds a `ReminderScheduler` — the same pattern the views already use
+(`TaskListView`, `KanbanLensView`, etc.); the scheduler is stateless (it wraps
+`UNUserNotificationCenter.current()`), so a fresh instance is correct. The handler's init
+defaults to `ReminderScheduler()` but accepts an injected one, so tests can pass
+`ReminderScheduler(center: fakeCenter)` (using the existing `NotificationScheduling`
+protocol) and assert add/remove calls. After
+mutating the store, each tool calls the scheduler exactly where the equivalent UI action
+does, so MCP-driven changes keep system notifications in lockstep with the app:
+
+| Tool | Notification action (mirrors UI) |
+|---|---|
+| `create_task` | `await schedule(for: task)` |
+| `update_task` | `cancel(for: task)` then `await schedule(for: task)` (mirrors editor save — covers deadline/title/notes changes) |
+| `complete_task` | `cancel(for: task)`; if it recurs, `await schedule(for: next)` |
+| `delete_task` | `cancel(for: task)` |
+| `reopen_task` | none — matches UI (reopen does not reschedule) |
+| `snooze_task` | none — matches UI; `snooze` only sets `snoozedUntil` (list visibility), it never touched `deadline`/notifications |
+| `get_task` / `list_tasks` / `list_columns` / `move_task` | none (no deadline change) |
+
+`ReminderScheduler.schedule` already no-ops safely for completed tasks, missing deadlines,
+or past fire dates, so handlers can call it unconditionally after a mutation.
+
+Authorization: the app already requests notification permission at launch
+(`AppDelegate`). Handlers do not re-request; if permission was denied, `schedule` simply
+fails silently inside the scheduler, same as the UI today.
+
 ## 5. Settings & lifecycle
 
 `AppSettings` gains three keys (all in `UserDefaults`):
@@ -164,10 +192,6 @@ setting starts/stops the listener live (observe the setting change → call
 
 ## 7. Out of scope for v1
 
-- **Reminder rescheduling.** `complete_task` (recurring follow-up) and `snooze_task` will
-  mutate the store but will **not** (re)schedule `UNUserNotification`s, because
-  `ReminderScheduler` lives in `AppDelegate`, not in the stores. v1 changes data only;
-  notification wiring is a documented follow-up.
 - Keychain storage for the token (UserDefaults is used instead).
 - Column create/rename/delete/reorder tools (board structure editing). Only `list_columns`
   and `move_task` are exposed in v1.
@@ -181,8 +205,11 @@ testmanagerd):
 - **`HTTPMessageTests`** — parse a raw request buffer; build a response; round-trip.
 - **`MCPDispatcherTests`** — feed `initialize` / `tools/list` / `tools/call` JSON, assert
   JSON-RPC envelopes and error codes; assert the 401 path when token is missing/wrong.
-- **`MCPToolHandlersTests`** — in-memory `ModelContainer` (the `--uitest` pattern), call
-  each tool handler, assert store mutations and DTO output. Primary coverage lives here.
+- **`MCPToolHandlersTests`** — in-memory `ModelContainer` (the `--uitest` pattern) plus a
+  fake `NotificationScheduling` injected into the handler's `ReminderScheduler`. Call each
+  tool handler, assert store mutations, DTO output, **and** the expected notification
+  add/remove calls per §4.1 (e.g. `create_task` with a future deadline adds a request;
+  `complete_task`/`delete_task` remove it). Primary coverage lives here.
 
 The `NWListener` socket layer stays thin and is verified manually (`curl` +
 `claude mcp add`); no flaky socket tests.
@@ -192,5 +219,8 @@ The `NWListener` socket layer stays thin and is verified manually (`curl` +
 1. With the server enabled, `claude mcp add` connects and `tools/list` returns all 10
    tools.
 2. Creating/updating/completing a task via MCP is reflected live in the board/list UI.
-3. Requests without a valid Bearer token receive `401`.
-4. All three test suites pass via per-suite `-only-testing`.
+3. A task created/edited via MCP with a future deadline produces a pending system
+   notification; completing or deleting it via MCP removes that pending notification
+   (verified manually, or via a `NotificationScheduling` test double in the handler tests).
+4. Requests without a valid Bearer token receive `401`.
+5. All three test suites pass via per-suite `-only-testing`.
