@@ -73,4 +73,25 @@ struct PlanStoreTests {
         let earlierToday = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 7))!
         #expect(!PlanStore.needsPlanning(lastPlanned: earlierToday, now: day, calendar: calendar))
     }
+
+    @Test func carryOverCandidatesReturnsPriorUnfinished() throws {
+        let context = try makeContext()
+        let store = PlanStore(context: context, calendar: calendar)
+        let done = TodoTask(title: "已完成"); done.isCompleted = true
+        let pending = TodoTask(title: "未完成")
+        context.insert(done); context.insert(pending)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: day)!
+        store.toggle(done, on: yesterday)
+        store.toggle(pending, on: yesterday)
+        let candidates = store.carryOverCandidates(before: day)
+        #expect(candidates.map(\.id) == [pending.id])   // 已完成的不算,只返回未完成
+    }
+
+    @Test func carryOverCandidatesEmptyWhenNoPriorPlan() throws {
+        let context = try makeContext()
+        let store = PlanStore(context: context, calendar: calendar)
+        let t = TodoTask(title: "今天才承诺"); context.insert(t)
+        store.toggle(t, on: day)                         // 只有今天的 plan,无更早的
+        #expect(store.carryOverCandidates(before: day).isEmpty)
+    }
 }

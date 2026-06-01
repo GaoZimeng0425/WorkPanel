@@ -48,6 +48,17 @@ final class PlanStore {
         return p.committedTaskIDs.compactMap { byID[$0] }
     }
 
+    /// 严格早于 day 的「最近一条」DayPlan 里、至今仍未完成的承诺任务(顺延候选)。只读,不写库。
+    func carryOverCandidates(before day: Date) -> [TodoTask] {
+        let start = calendar.startOfDay(for: day)
+        let plans = (try? context.fetch(FetchDescriptor<DayPlan>())) ?? []
+        guard let prev = plans.filter({ $0.day < start }).max(by: { $0.day < $1.day })
+        else { return [] }
+        let all = (try? context.fetch(FetchDescriptor<TodoTask>())) ?? []
+        let byID = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
+        return prev.committedTaskIDs.compactMap { byID[$0] }.filter { !$0.isCompleted }
+    }
+
     /// 是否该触发开工规划:从未规划过,或上次规划不在今天。
     nonisolated static func needsPlanning(lastPlanned: Date?, now: Date, calendar: Calendar) -> Bool {
         guard let lastPlanned else { return true }

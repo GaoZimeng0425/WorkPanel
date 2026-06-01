@@ -1,26 +1,30 @@
 import SwiftUI
 import SwiftData
 
-/// 开工规划:从活动任务里挑出「今日承诺」。逾期+今日到期者置顶高亮作为建议。
-/// 不限数量、不拦截(只记录不干预)。确认后写 lastPlannedDay。
+/// 开工规划:从活动任务里挑出「今日承诺」。顺延项(昨天承诺未完成)置顶 + 「顺延」徽章;
+/// 逾期/今日到期者标「建议」。不限数量、可跳过(只记录不干预,跳过则今天无 DayPlan)。
 struct PlanningView: View {
     let onDone: () -> Void
 
     @Environment(\.modelContext) private var context
     @Query private var tasks: [TodoTask]
     @AppStorage(AppSettings.Key.lastPlannedDay) private var lastPlannedDay = 0.0
+    @State private var carriedIDs: Set<UUID> = []
+    @State private var didLoadCarryOver = false
 
     private var store: PlanStore { PlanStore(context: context) }
     private var now: Date { .now }
 
-    /// 候选:未完成、未 snooze;逾期/今日到期排前,其余按优先级。
+    /// 候选:未完成、未 snooze;顺延项最前,建议项次之,其余按优先级。
     private var candidates: [TodoTask] {
         let cal = Calendar.current
         return tasks
             .filter { !$0.isCompleted && ($0.snoozedUntil.map { $0 <= now } ?? true) }
             .sorted { lhs, rhs in
-                let l = suggested(lhs, cal: cal), r = suggested(rhs, cal: cal)
-                if l != r { return l }                       // 建议项在前
+                let lc = carriedIDs.contains(lhs.id), rc = carriedIDs.contains(rhs.id)
+                if lc != rc { return lc }
+                let ls = suggested(lhs, cal: cal), rs = suggested(rhs, cal: cal)
+                if ls != rs { return ls }
                 return lhs.priority.rawValue > rhs.priority.rawValue
             }
     }
@@ -40,15 +44,25 @@ struct PlanningView: View {
             Rectangle().fill(Theme.stroke).frame(height: 1)
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(candidates) { task in
-                        row(task)
-                    }
+                    ForEach(candidates) { task in row(task) }
                 }
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 .padding(12)
             }
             .scrollEdgeFade()
         }
+        .onAppear {
+            guard !didLoadCarryOver else { return }
+            didLoadCarryOver = true
+            carriedIDs = Set(store.carryOverCandidates(before: now).map(\.id))   // 只读:标记顺延,不自动勾选
+        }
+    }
+
+    /// 跳过与「开始今天」都只标记 lastPlannedDay 并收起;承诺与否取决于用户是否点选过行(实时写入)。
+    private func dismiss() {
+        lastPlannedDay = now.timeIntervalSinceReferenceDate
+        try? context.save()
+        onDone()
     }
 
     private var header: some View {
@@ -60,12 +74,10 @@ struct PlanningView: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.textTertiary)
             Spacer()
-            Button("开始今天") {
-                lastPlannedDay = now.timeIntervalSinceReferenceDate
-                try? context.save()
-                onDone()
-            }
-            .buttonStyle(NoirPillButtonStyle(prominent: true))
+            Button("跳过", action: dismiss)
+                .buttonStyle(NoirPillButtonStyle())
+            Button("开始今天", action: dismiss)
+                .buttonStyle(NoirPillButtonStyle(prominent: true))
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
     }
@@ -83,7 +95,11 @@ struct PlanningView: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                 Spacer()
-                if suggested(task, cal: .current) {
+                if carriedIDs.contains(task.id) {
+                    Text("顺延")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Theme.recurrence)
+                } else if suggested(task, cal: .current) {
                     Text("建议")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(Theme.accent)

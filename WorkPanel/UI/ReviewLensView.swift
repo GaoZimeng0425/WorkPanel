@@ -30,9 +30,9 @@ struct ReviewLensView: View {
                                threshold: Self.overloadThreshold, calendar: calendar)
     }
 
-    private var dayFormatter: DateFormatter {
+    private static let dayFormatter: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "M/d"; return f
-    }
+    }()
 
     var body: some View {
         ScrollView {
@@ -44,7 +44,7 @@ struct ReviewLensView: View {
                     } else {
                         ForEach(dayStats, id: \.day) { s in
                             HStack {
-                                Text(dayFormatter.string(from: s.day))
+                                Text(Self.dayFormatter.string(from: s.day))
                                     .font(.system(size: 11, design: .monospaced))
                                     .foregroundStyle(Theme.textTertiary).frame(width: 44, alignment: .leading)
                                 Text("承诺 \(s.committed)").foregroundStyle(Theme.textSecondary)
