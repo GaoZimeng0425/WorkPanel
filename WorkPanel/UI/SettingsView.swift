@@ -105,6 +105,7 @@ struct SettingsView: View {
                         .labelsHidden().frame(width: 80)
                         .multilineTextAlignment(.trailing)
                         .onSubmit {
+                            if mcpPort < 1 || mcpPort > 65535 { mcpPort = 8787 }
                             NotificationCenter.default.post(name: .mcpSettingsChanged, object: nil)
                         }
                 }
