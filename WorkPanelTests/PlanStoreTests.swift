@@ -18,4 +18,45 @@ struct PlanStoreTests {
         try context.save()
         #expect(try context.fetch(FetchDescriptor<DayPlan>()).count == 1)
     }
+
+    private var calendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        return c
+    }()
+    private var day: Date {
+        calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 10))!
+    }
+
+    @Test func toggleAddsAndRemovesCommitment() throws {
+        let context = try makeContext()
+        let store = PlanStore(context: context, calendar: calendar)
+        let task = TodoTask(title: "写周报")
+        context.insert(task)
+
+        store.toggle(task, on: day)
+        #expect(store.isCommitted(task, on: day))
+        store.toggle(task, on: day)
+        #expect(!store.isCommitted(task, on: day))
+    }
+
+    @Test func ensurePlanReusesSameDayPlan() throws {
+        let context = try makeContext()
+        let store = PlanStore(context: context, calendar: calendar)
+        let morning = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 9))!
+        let evening = calendar.date(from: DateComponents(year: 2026, month: 6, day: 1, hour: 21))!
+        _ = store.ensurePlan(on: morning)
+        _ = store.ensurePlan(on: evening)
+        #expect(try context.fetch(FetchDescriptor<DayPlan>()).count == 1)
+    }
+
+    @Test func committedTasksSkipsDeletedIDs() throws {
+        let context = try makeContext()
+        let store = PlanStore(context: context, calendar: calendar)
+        let task = TodoTask(title: "活儿")
+        context.insert(task)
+        store.toggle(task, on: day)
+        context.delete(task)
+        #expect(store.committedTasks(on: day).isEmpty)   // ID 取不到 → 跳过,不崩
+    }
 }
