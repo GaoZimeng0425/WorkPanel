@@ -41,6 +41,7 @@ enum Theme {
     nonisolated static let tag        = Color(red: 0.36, green: 0.76, blue: 0.43) // #5BC16E
     nonisolated static let deadline   = Color(red: 0.30, green: 0.65, blue: 1.0)  // #4DA6FF
     nonisolated static let recurrence = Color(red: 0.73, green: 0.55, blue: 1.0)  // #B98BFF
+    nonisolated static let success    = Color(red: 0.36, green: 0.76, blue: 0.43) // #5BC16E
 
     // MARK: 文案
     nonisolated static func priorityLabel(_ p: Priority) -> String {

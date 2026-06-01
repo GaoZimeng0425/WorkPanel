@@ -39,20 +39,29 @@ struct NoirPillButtonStyle: ButtonStyle {
 
 /// 图标按钮:默认 textTertiary,hover 提亮到 textPrimary,按下轻微缩放。
 struct NoirIconButtonStyle: ButtonStyle {
+    var size: CGFloat = 28
+
     func makeBody(configuration: Configuration) -> some View {
-        Icon(configuration: configuration)
+        Icon(configuration: configuration, size: size)
     }
 
     private struct Icon: View {
         let configuration: ButtonStyleConfiguration
+        let size: CGFloat
         @State private var hovering = false
 
         var body: some View {
             configuration.label
                 .foregroundStyle(hovering ? Theme.textPrimary : Theme.textTertiary)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: size, height: size)
+                .background(
+                    Circle()
+                        .fill(hovering ? Theme.surfaceEmphasis : Color.clear)
+                )
                 .opacity(configuration.isPressed ? 0.7 : 1)
                 .scaleEffect(configuration.isPressed ? 0.94 : 1)
-                .contentShape(Rectangle())
+                .contentShape(Circle())
                 .onHover { hovering = $0 }
                 .animation(.easeOut(duration: 0.12), value: hovering)
                 .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
@@ -95,5 +104,6 @@ struct NoirSegmented<Value: Hashable>: View {
         }
         .padding(3)
         .background(Capsule(style: .continuous).fill(Theme.surfaceSubtle))
+        .overlay(Capsule(style: .continuous).stroke(Theme.stroke, lineWidth: 0.6))
     }
 }
