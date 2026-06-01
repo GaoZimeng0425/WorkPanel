@@ -34,6 +34,8 @@ final class MCPToolHandlers {
         case "list_tasks":   return try listTasks(args)
         case "get_task":     return try getTask(args)
         case "list_columns": return try listColumns()
+        case "create_task":  return try await createTask(args)
+        case "update_task":  return try await updateTask(args)
         default: throw ToolError.badArgument("Unknown tool: \(name)")
         }
     }
@@ -66,6 +68,45 @@ final class MCPToolHandlers {
 
     private func listColumns() throws -> String {
         try encode(board.columns().map(ColumnDTO.init))
+    }
+
+    // MARK: - Create / update
+
+    private func createTask(_ args: JSONValue) async throws -> String {
+        guard let title = args["title"]?.stringValue, !title.isEmpty else {
+            throw ToolError.badArgument("Missing 'title'")
+        }
+        var parsed = ParsedInput()
+        parsed.title = title
+        parsed.priority = args["priority"]?.stringValue.flatMap(Priority.init(apiName:)) ?? .medium
+        parsed.tags = args["tags"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        if let s = args["deadline"]?.stringValue, let date = ISO8601Date.date(s) {
+            parsed.deadline = date
+        }
+        let notes = args["notes"]?.stringValue ?? ""
+        let task = todo.add(parsed, notes: notes)
+        if let s = args["columnID"]?.stringValue, let col = UUID(uuidString: s) {
+            board.setColumn(task, to: col)
+        }
+        try context.save()
+        await scheduler.schedule(for: task)
+        return try encode(dto(task))
+    }
+
+    private func updateTask(_ args: JSONValue) async throws -> String {
+        let task = try fetchTask(requireID(args))
+        if let v = args["title"]?.stringValue { task.title = v }
+        if let v = args["notes"]?.stringValue { task.notes = v }
+        if args.contains("deadline") {
+            if let s = args["deadline"]?.stringValue, let d = ISO8601Date.date(s) { task.deadline = d }
+            else if args["deadline"]?.isNull == true { task.deadline = nil }
+        }
+        if let v = args["priority"]?.stringValue, let p = Priority(apiName: v) { task.priority = p }
+        if let arr = args["tags"]?.arrayValue { task.tags = arr.compactMap(\.stringValue) }
+        try context.save()
+        scheduler.cancel(for: task)
+        await scheduler.schedule(for: task)
+        return try encode(dto(task))
     }
 
     // MARK: - Helpers

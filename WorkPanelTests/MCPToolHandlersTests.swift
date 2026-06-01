@@ -67,4 +67,56 @@ struct MCPToolHandlersTests {
         let cols = try JSONDecoder().decode([ColumnDTO].self, from: Data(json.utf8))
         #expect(cols.map(\.name) == ["计划中", "开发中"])
     }
+
+    @Test func createTaskInsertsAndSchedulesNotification() async throws {
+        let (h, ctx, mock) = try makeHandlers()
+        let due = ISO8601Date.string(Date(timeIntervalSinceNow: 3600))
+        let json = try await h.call("create_task", [
+            "title": "写文档", "notes": "细节", "priority": "high",
+            "tags": ["work"], "deadline": .string(due),
+        ])
+        let dto = try decodeTask(json)
+        #expect(dto.title == "写文档")
+        #expect(dto.priority == "high")
+        #expect(dto.tags == ["work"])
+
+        let stored = (try ctx.fetch(FetchDescriptor<TodoTask>()))
+        #expect(stored.count == 1)
+        #expect(mock.added.count == 1)   // future deadline → notification scheduled
+        #expect(mock.added.first?.identifier == dto.id)
+    }
+
+    @Test func createTaskRequiresTitle() async throws {
+        let (h, _, _) = try makeHandlers()
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("create_task", ["notes": "无标题"])
+        }
+    }
+
+    @Test func updateTaskPatchesOnlyProvidedFieldsAndReschedules() async throws {
+        let (h, ctx, mock) = try makeHandlers()
+        let t = TodoTask(title: "旧标题", notes: "旧备注",
+                         deadline: Date(timeIntervalSinceNow: 3600), priority: .low)
+        ctx.insert(t); try ctx.save()
+
+        let json = try await h.call("update_task", [
+            "id": .string(t.id.uuidString), "title": "新标题", "priority": "high",
+        ])
+        let dto = try decodeTask(json)
+        #expect(dto.title == "新标题")
+        #expect(dto.priority == "high")
+        #expect(dto.notes == "旧备注")   // untouched (absent key)
+        #expect(mock.removed.contains(t.id.uuidString))   // cancel
+        #expect(mock.added.count == 1)                    // reschedule
+    }
+
+    @Test func updateTaskClearsDeadlineWhenExplicitNull() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "有截止", deadline: Date(timeIntervalSinceNow: 3600))
+        ctx.insert(t); try ctx.save()
+
+        let json = try await h.call("update_task", ["id": .string(t.id.uuidString), "deadline": .null])
+        #expect(try decodeTask(json).deadline == nil)
+        #expect(t.deadline == nil)
+    }
 }
