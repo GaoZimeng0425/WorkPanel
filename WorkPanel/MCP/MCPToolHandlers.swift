@@ -14,6 +14,11 @@ enum ToolError: Error, CustomStringConvertible {
     }
 }
 
+struct CompleteResult: Codable {
+    let task: TaskDTO
+    let next: TaskDTO?
+}
+
 @MainActor
 final class MCPToolHandlers {
     private let context: ModelContext
@@ -36,6 +41,11 @@ final class MCPToolHandlers {
         case "list_columns": return try listColumns()
         case "create_task":  return try await createTask(args)
         case "update_task":  return try await updateTask(args)
+        case "complete_task": return try await completeTask(args)
+        case "reopen_task":   return try reopenTask(args)
+        case "snooze_task":   return try snoozeTask(args)
+        case "delete_task":   return try deleteTask(args)
+        case "move_task":     return try moveTask(args)
         default: throw ToolError.badArgument("Unknown tool: \(name)")
         }
     }
@@ -113,6 +123,63 @@ final class MCPToolHandlers {
         try context.save()
         scheduler.cancel(for: task)
         await scheduler.schedule(for: task)
+        return try encode(dto(task))
+    }
+
+    // MARK: - State transitions
+
+    private func completeTask(_ args: JSONValue) async throws -> String {
+        let task = try fetchTask(requireID(args))
+        let next = todo.complete(task)
+        try context.save()
+        scheduler.cancel(for: task)
+        if let next { await scheduler.schedule(for: next) }
+        return try encode(CompleteResult(task: dto(task), next: next.map(dto)))
+    }
+
+    private func reopenTask(_ args: JSONValue) throws -> String {
+        let task = try fetchTask(requireID(args))
+        todo.reopen(task)
+        try context.save()
+        return try encode(dto(task))
+    }
+
+    private func snoozeTask(_ args: JSONValue) throws -> String {
+        guard let s = args["until"]?.stringValue, let date = ISO8601Date.date(s) else {
+            throw ToolError.badArgument("Missing or invalid 'until'")
+        }
+        let task = try fetchTask(requireID(args))
+        todo.snooze(task, until: date)
+        try context.save()
+        return try encode(dto(task))
+    }
+
+    private func deleteTask(_ args: JSONValue) throws -> String {
+        let id = try requireID(args)
+        let task = try fetchTask(id)
+        scheduler.cancel(for: task)
+        todo.delete(task)
+        try context.save()
+        return try encode(["deleted": id.uuidString])
+    }
+
+    private func moveTask(_ args: JSONValue) throws -> String {
+        let task = try fetchTask(requireID(args))
+        if args.contains("columnID"), args["columnID"]?.isNull == true {
+            board.setColumn(task, to: nil)
+        } else if let s = args["columnID"]?.stringValue, let col = UUID(uuidString: s) {
+            guard board.columns().contains(where: { $0.id == col }) else {
+                throw ToolError.badArgument("Unknown columnID")
+            }
+            if let index = args["index"]?.intValue {
+                board.move(task, to: col, at: index)
+            } else {
+                board.setColumn(task, to: col)
+            }
+        } else {
+            throw ToolError.badArgument("Missing 'columnID'")
+        }
+        try context.save()
         return try encode(dto(task))
     }
 

@@ -133,4 +133,95 @@ struct MCPToolHandlersTests {
             _ = try await h.call("update_task", ["id": .string(UUID().uuidString), "title": "新"])
         }
     }
+
+    struct CompleteResultDTO: Codable { let task: TaskDTO; let next: TaskDTO? }
+
+    @Test func completeTaskCancelsNotificationAndReturnsTask() async throws {
+        let (h, ctx, mock) = try makeHandlers()
+        let t = TodoTask(title: "完成我", deadline: Date(timeIntervalSinceNow: 3600))
+        ctx.insert(t); try ctx.save()
+
+        let json = try await h.call("complete_task", ["id": .string(t.id.uuidString)])
+        let result = try JSONDecoder().decode(CompleteResultDTO.self, from: Data(json.utf8))
+        #expect(result.task.isCompleted == true)
+        #expect(result.next == nil)
+        #expect(mock.removed.contains(t.id.uuidString))
+    }
+
+    @Test func completeRecurringSchedulesNext() async throws {
+        let (h, ctx, mock) = try makeHandlers()
+        let t = TodoTask(title: "每天站会", deadline: Date(timeIntervalSinceNow: 3600), recurrence: .daily)
+        ctx.insert(t); try ctx.save()
+
+        let json = try await h.call("complete_task", ["id": .string(t.id.uuidString)])
+        let result = try JSONDecoder().decode(CompleteResultDTO.self, from: Data(json.utf8))
+        #expect(result.next != nil)
+        #expect(mock.added.contains { $0.identifier == result.next?.id })
+    }
+
+    @Test func reopenClearsCompletion() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "恢复我"); t.isCompleted = true; t.completedAt = .now
+        ctx.insert(t); try ctx.save()
+
+        let dto = try decodeTask(try await h.call("reopen_task", ["id": .string(t.id.uuidString)]))
+        #expect(dto.isCompleted == false)
+    }
+
+    @Test func snoozeSetsSnoozeWithoutTouchingNotifications() async throws {
+        let (h, ctx, mock) = try makeHandlers()
+        let t = TodoTask(title: "推迟我")
+        ctx.insert(t); try ctx.save()
+        let until = ISO8601Date.string(Date(timeIntervalSinceNow: 86400))
+
+        _ = try await h.call("snooze_task", ["id": .string(t.id.uuidString), "until": .string(until)])
+        #expect(t.snoozedUntil != nil)
+        #expect(mock.added.isEmpty && mock.removed.isEmpty)   // snooze never touches notifications
+    }
+
+    @Test func deleteRemovesTaskAndNotification() async throws {
+        let (h, ctx, mock) = try makeHandlers()
+        let t = TodoTask(title: "删除我")
+        ctx.insert(t); try ctx.save()
+
+        let json = try await h.call("delete_task", ["id": .string(t.id.uuidString)])
+        #expect(json.contains(t.id.uuidString))
+        #expect((try ctx.fetch(FetchDescriptor<TodoTask>())).isEmpty)
+        #expect(mock.removed.contains(t.id.uuidString))
+    }
+
+    @Test func moveTaskSetsColumnAndOrder() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let c0 = BoardColumn(name: "A", order: 0)
+        let c1 = BoardColumn(name: "B", order: 1)
+        [c0, c1].forEach { ctx.insert($0) }
+        let t = TodoTask(title: "移动我"); t.columnID = c0.id
+        ctx.insert(t); try ctx.save()
+
+        let dto = try decodeTask(try await h.call("move_task", [
+            "id": .string(t.id.uuidString), "columnID": .string(c1.id.uuidString), "index": 0,
+        ]))
+        #expect(dto.columnID == c1.id.uuidString)
+        #expect(dto.columnName == "B")
+    }
+
+    @Test func moveTaskClearsColumnWhenNull() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let c0 = BoardColumn(name: "A", order: 0); ctx.insert(c0)
+        let t = TodoTask(title: "清状态"); t.columnID = c0.id
+        ctx.insert(t); try ctx.save()
+
+        let dto = try decodeTask(try await h.call("move_task", [
+            "id": .string(t.id.uuidString), "columnID": .null,
+        ]))
+        #expect(dto.columnID == nil)
+    }
+
+    @Test func moveTaskRejectsUnknownColumnID() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "x"); ctx.insert(t); try ctx.save()
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("move_task", ["id": .string(t.id.uuidString), "columnID": .string(UUID().uuidString)])
+        }
+    }
 }
