@@ -32,6 +32,11 @@ final class BoardPanelController: NSObject {
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
+    /// 把高度夹紧到 [min, max]。纯函数,便于无屏幕环境单测。
+    nonisolated static func clampHeight(_ proposed: CGFloat, min minH: CGFloat, max maxH: CGFloat) -> CGFloat {
+        Swift.min(Swift.max(proposed, minH), maxH)
+    }
+
     func show<Content: View>(@ViewBuilder _ content: () -> Content) {
         let panel = panel ?? makePanel()
         self.panel = panel
