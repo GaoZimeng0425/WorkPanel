@@ -1,0 +1,15 @@
+.superpowers/
+
+.build/
+.DS_Store
+
+.idea/
+.vscode/
+.codegraph/
+.claude/
+
+# Xcode per-user state (scheme order, breakpoints, window layout)
+xcuserdata/
+
+# Release build artifacts (build.sh output)
+build/
