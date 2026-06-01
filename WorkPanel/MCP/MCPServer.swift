@@ -77,6 +77,8 @@ final class MCPServer {
             response = HTTPResponse.methodNotAllowed()
         } else if !Self.authorized(req.headers, token: token) {
             response = HTTPResponse.unauthorized()
+        } else if req.path != "/mcp" {
+            response = HTTPResponse.build(status: 404, reason: "Not Found")
         } else {
             switch await dispatcher.handle(req.body) {
             case .body(let data): response = HTTPResponse.json(data)
