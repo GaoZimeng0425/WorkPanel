@@ -1,9 +1,12 @@
+import AppKit
 import SwiftUI
 import SwiftData
 
 /// 看板外壳:标题栏 + 透镜 tab 切换 + 按模式分发到各透镜视图。
 struct BoardView: View {
     let onClose: () -> Void
+    let onResizeChanged: (CGFloat) -> Void
+    let onResizeEnded: () -> Void
 
     @Environment(\.modelContext) private var context
     @Query private var tasks: [TodoTask]
@@ -16,6 +19,7 @@ struct BoardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            resizeHandle
             header
             Rectangle().fill(Theme.stroke).frame(height: 1)
             content
@@ -59,6 +63,24 @@ struct BoardView: View {
         case .priority: PriorityLensView()
         case .review:   ReviewLensView()
         }
+    }
+
+    private var resizeHandle: some View {
+        Capsule()
+            .fill(Theme.textTertiary.opacity(0.4))
+            .frame(width: 36, height: 4)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { onResizeChanged($0.translation.height) }
+                    .onEnded { _ in onResizeEnded() }
+            )
+            .onHover { inside in
+                if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+            }
+            .accessibilityLabel("调整看板高度")
     }
 
     private var header: some View {
