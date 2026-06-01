@@ -40,9 +40,10 @@ struct SettingsView: View {
         """
     }
 
-    private func copyToPasteboard(_ string: String) {
+    private func copy(_ string: String, notice: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
+        Notice.show(notice)
     }
 
     var body: some View {
@@ -146,15 +147,15 @@ struct SettingsView: View {
                 }
                 divider
                 row("访问令牌", systemImage: "key") {
-                    Button("复制令牌") { copyToPasteboard(mcpToken) }
+                    Button("复制令牌") { copy(mcpToken, notice: "已复制访问令牌") }
                         .buttonStyle(NoirPillButtonStyle())
                 }
                 divider
                 row("一键复制设置", systemImage: "doc.on.doc") {
                     HStack(spacing: 8) {
-                        Button("复制命令") { copyToPasteboard(mcpAddCommand) }
+                        Button("复制命令") { copy(mcpAddCommand, notice: "已复制注册命令") }
                             .buttonStyle(NoirPillButtonStyle())
-                        Button("复制 JSON") { copyToPasteboard(mcpJSONConfig) }
+                        Button("复制 JSON") { copy(mcpJSONConfig, notice: "已复制 JSON 配置") }
                             .buttonStyle(NoirPillButtonStyle())
                     }
                 }
