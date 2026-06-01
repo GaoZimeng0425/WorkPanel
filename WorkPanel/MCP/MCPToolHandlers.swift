@@ -83,11 +83,18 @@ final class MCPToolHandlers {
         if let s = args["deadline"]?.stringValue, let date = ISO8601Date.date(s) {
             parsed.deadline = date
         }
+        // validate columnID (if provided) before mutating anything
+        var targetColumn: UUID? = nil
+        if let s = args["columnID"]?.stringValue {
+            guard let col = UUID(uuidString: s),
+                  board.columns().contains(where: { $0.id == col }) else {
+                throw ToolError.badArgument("Unknown columnID")
+            }
+            targetColumn = col
+        }
         let notes = args["notes"]?.stringValue ?? ""
         let task = todo.add(parsed, notes: notes)
-        if let s = args["columnID"]?.stringValue, let col = UUID(uuidString: s) {
-            board.setColumn(task, to: col)
-        }
+        if let targetColumn { board.setColumn(task, to: targetColumn) }
         try context.save()
         await scheduler.schedule(for: task)
         return try encode(dto(task))

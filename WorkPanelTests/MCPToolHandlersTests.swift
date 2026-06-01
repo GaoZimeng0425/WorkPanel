@@ -119,4 +119,18 @@ struct MCPToolHandlersTests {
         #expect(try decodeTask(json).deadline == nil)
         #expect(t.deadline == nil)
     }
+
+    @Test func createTaskRejectsUnknownColumnID() async throws {
+        let (h, _, _) = try makeHandlers()
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("create_task", ["title": "x", "columnID": .string(UUID().uuidString)])
+        }
+    }
+
+    @Test func updateTaskThrowsWhenMissing() async throws {
+        let (h, _, _) = try makeHandlers()
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("update_task", ["id": .string(UUID().uuidString), "title": "新"])
+        }
+    }
 }
