@@ -2,8 +2,9 @@
 import Foundation
 
 enum ISO8601Date {
-    nonisolated static func string(_ date: Date) -> String { ISO8601DateFormatter().string(from: date) }
-    nonisolated static func date(_ s: String) -> Date? { ISO8601DateFormatter().date(from: s) }
+    private nonisolated(unsafe) static let formatter = ISO8601DateFormatter()
+    nonisolated static func string(_ date: Date) -> String { formatter.string(from: date) }
+    nonisolated static func date(_ s: String) -> Date? { formatter.date(from: s) }
 }
 
 extension Priority {
