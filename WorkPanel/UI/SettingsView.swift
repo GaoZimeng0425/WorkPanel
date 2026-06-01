@@ -17,8 +17,10 @@ struct SettingsView: View {
             HStack(spacing: 9) {
                 Image(systemName: "gearshape.fill")
                     .font(.title2)
-                    .foregroundStyle(.secondary)
-                Text("设置").font(.title2.weight(.bold))
+                    .foregroundStyle(Theme.accentText)
+                Text("设置")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(Theme.textPrimary)
                 Spacer()
             }
 
@@ -26,13 +28,13 @@ struct SettingsView: View {
                 row("捕获面板", systemImage: "square.and.pencil") {
                     KeyboardShortcuts.Recorder("", name: .toggleCapture)
                 }
-                Divider()
+                divider
                 row("看板面板", systemImage: "rectangle.split.3x1") {
                     KeyboardShortcuts.Recorder("", name: .toggleBoard)
                 }
-                Divider()
+                divider
                 row("设置面板", systemImage: "gearshape") {
-                    Text("⌘,").font(.callout).foregroundStyle(.secondary)
+                    Text("⌘,").font(.callout).foregroundStyle(Theme.textSecondary)
                 }
             }
 
@@ -46,7 +48,7 @@ struct SettingsView: View {
                             catch { launchAtLogin = LaunchAtLogin.isEnabled }
                         }
                 }
-                Divider()
+                divider
                 row("外观主题", systemImage: "circle.lefthalf.filled") {
                     Picker("", selection: $appearance) {
                         ForEach(Appearance.allCases) { Text($0.label).tag($0.rawValue) }
@@ -57,7 +59,7 @@ struct SettingsView: View {
                         (Appearance(rawValue: raw) ?? .system).apply()
                     }
                 }
-                Divider()
+                divider
                 row("新任务默认优先级", systemImage: "flag") {
                     Picker("", selection: $defaultPriority) {
                         ForEach(Priority.allCases.reversed(), id: \.rawValue) {
@@ -79,7 +81,7 @@ struct SettingsView: View {
                     .labelsHidden()
                     .fixedSize()
                 }
-                Divider()
+                divider
                 row("通知声音", systemImage: "speaker.wave.2") {
                     Toggle("", isOn: $sound).labelsHidden().toggleStyle(.switch)
                 }
@@ -89,17 +91,29 @@ struct SettingsView: View {
                 Spacer()
                 Button("完成") { onClose() }
                     .keyboardShortcut(.defaultAction)
-                    .controlSize(.large)
+                    .buttonStyle(NoirPillButtonStyle(prominent: true))
             }
         }
         .padding(24)
         .frame(width: 460)
-        .background(.ultraThinMaterial)
+        .background(
+            LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
+                           startPoint: .top, endPoint: .bottom)
+        )
         .clipShape(RoundedRectangle(cornerRadius: Theme.panelRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.panelRadius, style: .continuous)
+                .stroke(Theme.stroke, lineWidth: 1)
+        )
+        .preferredColorScheme(.dark)
         .onKeyPress(.escape) { onClose(); return .handled }
     }
 
     // MARK: - 分组卡片与行
+
+    private var divider: some View {
+        Rectangle().fill(Theme.stroke).frame(height: 1)
+    }
 
     /// 分组:小标题 + 圆角卡片容器。
     @ViewBuilder
@@ -108,13 +122,17 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 7) {
             Label(title, systemImage: systemImage)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.textSecondary)
             VStack(spacing: 10) { content() }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 11)
-                .background(Color(nsColor: .controlBackgroundColor).opacity(0.55),
-                            in: RoundedRectangle(cornerRadius: Theme.cardRadius))
+                .background(Theme.surfaceSubtle,
+                            in: RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                        .stroke(Theme.strokeStrong, lineWidth: 0.7)
+                )
         }
     }
 
@@ -124,6 +142,7 @@ struct SettingsView: View {
         HStack {
             Label(title, systemImage: systemImage)
                 .labelStyle(.titleAndIcon)
+                .foregroundStyle(Theme.textPrimary)
             Spacer()
             control()
         }

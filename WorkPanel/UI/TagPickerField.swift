@@ -32,14 +32,22 @@ struct TagPickerField: View {
     private var canCreate: Bool { !trimmed.isEmpty && !existing.contains(trimmed) && !selected.contains(trimmed) }
 
     private var popover: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 8) {
             TextField("筛选或新建标签", text: $filter)
                 .textFieldStyle(.plain)
-                .padding(8)
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textPrimary)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 7)
+                .background(Theme.surfaceSubtle, in: RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                        .stroke(Theme.stroke, lineWidth: 0.6)
+                )
                 .onSubmit { if canCreate { create() } }
-            Divider()
+            Rectangle().fill(Theme.stroke).frame(height: 1)
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 2) {
                     if canCreate {
                         row(title: "新建『\(trimmed)』", checked: false) { create() }
                     }
@@ -50,6 +58,7 @@ struct TagPickerField: View {
             }
             .frame(maxHeight: 220)
         }
+        .padding(8)
         .frame(width: 220)
         .background(Theme.panelBottom)
         .preferredColorScheme(.dark)
@@ -64,7 +73,7 @@ struct TagPickerField: View {
                 if checked { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
             }
             .font(.system(size: 12))
-            .padding(.horizontal, 10).padding(.vertical, 6)
+            .padding(.horizontal, 9).padding(.vertical, 7)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

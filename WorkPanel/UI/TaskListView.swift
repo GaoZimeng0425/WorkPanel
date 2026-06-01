@@ -36,26 +36,32 @@ struct TaskListView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            Rectangle().fill(Theme.stroke).frame(height: 1)
             if showArchive {
                 archiveList
             } else {
                 taskList
             }
-            Divider()
+            Rectangle().fill(Theme.stroke).frame(height: 1)
             footer
         }
         .frame(width: 360, height: 440)
+        .background(
+            LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
+                           startPoint: .top, endPoint: .bottom)
+        )
+        .preferredColorScheme(.dark)
     }
 
     private var header: some View {
-        HStack {
-            Picker("", selection: $segment) {
-                ForEach(Segment.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+        HStack(spacing: 10) {
+            NoirSegmented(
+                segments: Segment.allCases.map { .init(value: $0, label: $0.rawValue) },
+                selection: $segment
+            )
             .disabled(showArchive)
+
+            Spacer(minLength: 0)
 
             Menu {
                 Button("全部标签") { tagFilter = nil }
@@ -66,15 +72,17 @@ struct TaskListView: View {
                 Image(systemName: tagFilter == nil ? "tag" : "tag.fill")
             }
             .menuStyle(.borderlessButton)
-            .frame(width: 28)
+            .menuIndicator(.hidden)
+            .buttonStyle(NoirIconButtonStyle())
+            .accessibilityLabel("标签筛选")
 
             Button {
                 NotificationCenter.default.post(name: .openTaskEditor, object: TaskEditorView.Mode.create(columnID: nil))
             } label: {
                 Image(systemName: "plus")
             }
-            .buttonStyle(.borderless)
-            .frame(width: 28)
+            .buttonStyle(NoirIconButtonStyle())
+            .accessibilityLabel("新建任务")
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
     }
@@ -90,7 +98,14 @@ struct TaskListView: View {
         .scrollContentBackground(.hidden)
         .overlay {
             if visibleTasks.isEmpty {
-                ContentUnavailableView("没有任务", systemImage: "checkmark.circle")
+                VStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(Theme.textTertiary)
+                    Text("没有任务")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
         }
     }
@@ -98,14 +113,20 @@ struct TaskListView: View {
     private var archiveList: some View {
         List(TaskFilter.archived(tasks)) { task in
             HStack {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text(task.title).strikethrough().foregroundStyle(.secondary)
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success)
+                Text(task.title)
+                    .strikethrough()
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
                 Spacer()
                 Button("恢复") { store.reopen(task); try? context.save() }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(NoirPillButtonStyle())
             }
+            .padding(8)
+            .noirCard()
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -125,6 +146,7 @@ struct TaskListView: View {
                 Image(systemName: "ellipsis")
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .frame(width: 24)
         }
         .contentShape(Rectangle())
@@ -141,11 +163,15 @@ struct TaskListView: View {
                 Label(showArchive ? "返回" : "已完成归档",
                       systemImage: showArchive ? "chevron.left" : "checkmark.circle")
             }
+            .buttonStyle(NoirPillButtonStyle())
             Spacer()
             Button { NotificationCenter.default.post(name: .openSettings, object: nil) } label: { Image(systemName: "gearshape") }
+                .buttonStyle(NoirIconButtonStyle())
+                .accessibilityLabel("设置")
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
+                .buttonStyle(NoirIconButtonStyle())
+                .accessibilityLabel("退出")
         }
-        .buttonStyle(.borderless)
         .font(.system(size: 12))
         .padding(10)
     }
