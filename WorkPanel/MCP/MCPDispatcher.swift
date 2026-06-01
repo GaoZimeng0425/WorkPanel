@@ -10,18 +10,19 @@ struct MCPDispatcher {
     }
 
     func handle(_ data: Data) async -> Outcome {
-        guard let req = try? JSONDecoder().decode(JSONValue.self, from: data),
-              let method = req["method"]?.stringValue else {
+        guard let req = try? JSONDecoder().decode(JSONValue.self, from: data) else {
             return .body(Self.error(id: .null, code: -32700, message: "Parse error"))
+        }
+        guard let method = req["method"]?.stringValue else {
+            return .body(Self.error(id: req["id"] ?? .null, code: -32600, message: "Invalid Request"))
         }
         // Notifications have no `id`.
         guard let id = req["id"] else { return .accepted }
 
         switch method {
         case "initialize":
-            let pv = req["params"]?["protocolVersion"]?.stringValue ?? "2025-06-18"
             let result: JSONValue = [
-                "protocolVersion": .string(pv),
+                "protocolVersion": "2025-06-18",
                 "capabilities": ["tools": [:]],
                 "serverInfo": ["name": "WorkPanel", "version": "1.0"],
             ]
@@ -68,24 +69,24 @@ struct MCPDispatcher {
 
     // MARK: - Tool catalog
 
-    private static func task(_ name: String, _ description: String, _ properties: JSONValue,
-                             required: JSONValue = .array([])) -> JSONValue {
+    private static func toolEntry(_ name: String, _ description: String, _ properties: JSONValue,
+                                  required: JSONValue = .array([])) -> JSONValue {
         ["name": .string(name), "description": .string(description),
          "inputSchema": ["type": "object", "properties": properties, "required": required]]
     }
 
     static let tools: [JSONValue] = [
-        task("list_tasks", "List tasks with optional filters.", [
+        toolEntry("list_tasks", "List tasks with optional filters.", [
             "completed": ["type": "boolean"],
             "columnID": ["type": "string"],
             "tag": ["type": "string"],
             "priority": ["type": "string", "enum": ["low", "medium", "high"]],
             "dueBefore": ["type": "string", "description": "ISO-8601 datetime"],
         ]),
-        task("get_task", "Get a single task by id.",
+        toolEntry("get_task", "Get a single task by id.",
              ["id": ["type": "string"]], required: ["id"]),
-        task("list_columns", "List board columns.", [:]),
-        task("create_task", "Create a new task.", [
+        toolEntry("list_columns", "List board columns.", [:]),
+        toolEntry("create_task", "Create a new task.", [
             "title": ["type": "string"],
             "notes": ["type": "string"],
             "deadline": ["type": "string", "description": "ISO-8601 datetime"],
@@ -93,7 +94,7 @@ struct MCPDispatcher {
             "tags": ["type": "array", "items": ["type": "string"]],
             "columnID": ["type": "string"],
         ], required: ["title"]),
-        task("update_task", "Update fields of an existing task; only provided fields change. Send deadline:null to clear it.", [
+        toolEntry("update_task", "Update fields of an existing task; only provided fields change. Send deadline:null to clear it.", [
             "id": ["type": "string"],
             "title": ["type": "string"],
             "notes": ["type": "string"],
@@ -101,15 +102,15 @@ struct MCPDispatcher {
             "priority": ["type": "string", "enum": ["low", "medium", "high"]],
             "tags": ["type": "array", "items": ["type": "string"]],
         ], required: ["id"]),
-        task("complete_task", "Mark a task complete; returns the next occurrence if it recurs.",
+        toolEntry("complete_task", "Mark a task complete; returns the next occurrence if it recurs.",
              ["id": ["type": "string"]], required: ["id"]),
-        task("reopen_task", "Reopen a completed task.",
+        toolEntry("reopen_task", "Reopen a completed task.",
              ["id": ["type": "string"]], required: ["id"]),
-        task("snooze_task", "Snooze a task until a date (ISO-8601).",
+        toolEntry("snooze_task", "Snooze a task until a date (ISO-8601).",
              ["id": ["type": "string"], "until": ["type": "string"]], required: ["id", "until"]),
-        task("delete_task", "Delete a task.",
+        toolEntry("delete_task", "Delete a task.",
              ["id": ["type": "string"]], required: ["id"]),
-        task("move_task", "Move a task to a board column (columnID:null clears status). Optional index for position.",
+        toolEntry("move_task", "Move a task to a board column (columnID:null clears status). Optional index for position.",
              ["id": ["type": "string"], "columnID": ["type": ["string", "null"]], "index": ["type": "integer"]],
              required: ["id"]),
     ]

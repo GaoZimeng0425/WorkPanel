@@ -66,4 +66,19 @@ struct MCPDispatcherTests {
         let data = try JSONEncoder().encode(["jsonrpc": "2.0", "method": "notifications/initialized"] as JSONValue)
         if case .accepted = await d.handle(data) {} else { Issue.record("expected accepted") }
     }
+
+    @Test func parseErrorReturnsMinus32700() async throws {
+        let d = try makeDispatcher()
+        guard case .body(let out) = await d.handle(Data("not json".utf8)) else {
+            Issue.record("expected body"); return
+        }
+        let r = try JSONDecoder().decode(JSONValue.self, from: out)
+        #expect(r["error"]?["code"]?.intValue == -32700)
+    }
+
+    @Test func missingMethodReturnsInvalidRequest() async throws {
+        let d = try makeDispatcher()
+        let r = try await send(d, ["jsonrpc": "2.0", "id": 9])   // valid JSON, no method
+        #expect(r["error"]?["code"]?.intValue == -32600)
+    }
 }
