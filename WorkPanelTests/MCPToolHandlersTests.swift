@@ -134,15 +134,13 @@ struct MCPToolHandlersTests {
         }
     }
 
-    struct CompleteResultDTO: Codable { let task: TaskDTO; let next: TaskDTO? }
-
     @Test func completeTaskCancelsNotificationAndReturnsTask() async throws {
         let (h, ctx, mock) = try makeHandlers()
         let t = TodoTask(title: "完成我", deadline: Date(timeIntervalSinceNow: 3600))
         ctx.insert(t); try ctx.save()
 
         let json = try await h.call("complete_task", ["id": .string(t.id.uuidString)])
-        let result = try JSONDecoder().decode(CompleteResultDTO.self, from: Data(json.utf8))
+        let result = try JSONDecoder().decode(CompleteResult.self, from: Data(json.utf8))
         #expect(result.task.isCompleted == true)
         #expect(result.next == nil)
         #expect(mock.removed.contains(t.id.uuidString))
@@ -154,7 +152,7 @@ struct MCPToolHandlersTests {
         ctx.insert(t); try ctx.save()
 
         let json = try await h.call("complete_task", ["id": .string(t.id.uuidString)])
-        let result = try JSONDecoder().decode(CompleteResultDTO.self, from: Data(json.utf8))
+        let result = try JSONDecoder().decode(CompleteResult.self, from: Data(json.utf8))
         #expect(result.next != nil)
         #expect(mock.added.contains { $0.identifier == result.next?.id })
     }
