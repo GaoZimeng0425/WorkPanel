@@ -27,8 +27,15 @@ final class KeyablePanel: NSPanel {
 @MainActor
 final class BoardPanelController: NSObject {
     private var panel: NSPanel?
-    private let height: CGFloat = 360
+    private let minHeight: CGFloat = 360
     private let margin: CGFloat = 16
+    private var currentHeight: CGFloat = 360
+    private var resizing = false
+    private var dragStartHeight: CGFloat = 0
+
+    private func maxHeight(for screen: NSScreen) -> CGFloat {
+        screen.visibleFrame.height - margin * 2
+    }
 
     var isVisible: Bool { panel?.isVisible ?? false }
 
@@ -38,15 +45,17 @@ final class BoardPanelController: NSObject {
     }
 
     func show<Content: View>(@ViewBuilder _ content: () -> Content) {
+        guard let screen = NSScreen.main else { return }
+        currentHeight = Self.clampHeight(AppSettings.boardHeight,
+                                         min: minHeight, max: maxHeight(for: screen))
         let panel = panel ?? makePanel()
         self.panel = panel
         panel.contentView = NSHostingView(rootView: content())
-        guard let screen = NSScreen.main else { return }
         let visible = screen.visibleFrame
         let width = visible.width - margin * 2
         let final = NSRect(x: visible.minX + margin, y: visible.minY + margin,
-                           width: width, height: height)
-        let start = final.offsetBy(dx: 0, dy: -(height + margin))
+                           width: width, height: currentHeight)
+        let start = final.offsetBy(dx: 0, dy: -(currentHeight + margin))
         panel.setFrame(start, display: false)
         // 不调用 NSApp.activate:看板作为浮层出现,不抢占当前 App 的 active 状态。
         // nonactivatingPanel + canBecomeKey 仍能接收 Esc / ⌘, / 文本输入。
@@ -72,9 +81,27 @@ final class BoardPanelController: NSObject {
         if isVisible { hide() } else { show(content) }
     }
 
+    /// 拖拽把手时实时调整高度:底边锚定不动,高度向上增长。无动画。
+    func resize(translationY: CGFloat) {
+        guard let panel, let screen = panel.screen ?? NSScreen.main else { return }
+        if !resizing { dragStartHeight = currentHeight; resizing = true }
+        // 向上拖 translationY 为负 → 变高。
+        currentHeight = Self.clampHeight(dragStartHeight - translationY,
+                                         min: minHeight, max: maxHeight(for: screen))
+        var frame = panel.frame
+        frame.size.height = currentHeight
+        panel.setFrame(frame, display: true)
+    }
+
+    /// 松手:落定高度并持久化。
+    func endResize() {
+        resizing = false
+        UserDefaults.standard.set(Double(currentHeight), forKey: AppSettings.Key.boardHeight)
+    }
+
     private func makePanel() -> NSPanel {
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: height),
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: currentHeight),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: false
         )
