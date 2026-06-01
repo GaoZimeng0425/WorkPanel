@@ -26,6 +26,7 @@ struct AppSettingsTests {
     }
 
     @Test func mcpPortDefaultsTo8787() {
+        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.mcpPort) }
         UserDefaults.standard.removeObject(forKey: AppSettings.Key.mcpPort)
         #expect(AppSettings.mcpPort == 8787)
     }
