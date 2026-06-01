@@ -23,6 +23,9 @@ struct TaskEditorView: View {
     @State private var priority: Priority
     @State private var selectedTags: [String]
     @State private var columnID: UUID?
+    @State private var showingStatusPicker = false
+    @State private var showingDatePicker = false
+    @State private var deadline: Date?
     private let base: ParsedInput
 
     @Query(sort: \BoardColumn.order) private var columns: [BoardColumn]
@@ -40,6 +43,7 @@ struct TaskEditorView: View {
             _priority = State(initialValue: AppSettings.defaultPriority)
             _selectedTags = State(initialValue: [])
             _columnID = State(initialValue: columnID)
+            _deadline = State(initialValue: nil)
         case .edit(let task):
             _text = State(initialValue: task.notes.isEmpty ? task.title : task.title + "\n" + task.notes)
             var b = ParsedInput()
@@ -52,6 +56,7 @@ struct TaskEditorView: View {
             _priority = State(initialValue: task.priority)
             _selectedTags = State(initialValue: task.tags)
             _columnID = State(initialValue: task.columnID)
+            _deadline = State(initialValue: task.deadline)
         }
     }
 
@@ -93,13 +98,32 @@ struct TaskEditorView: View {
                 }
             }
             .frame(height: 220)
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.stroke))
+            .background(
+                RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                    .fill(Theme.surfaceSubtle)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                    .stroke(Theme.strokeStrong, lineWidth: 0.7)
+            )
 
             controls
 
             HStack {
+                if isEditing {
+                    Button { deleteTask() } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.priority(.high))
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
                 Text("第一行为标题 · ⌘↩ 保存 · esc 取消")
                     .font(.caption).foregroundStyle(Theme.textTertiary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
                 Spacer()
                 Button("取消") { onClose() }
                     .buttonStyle(NoirPillButtonStyle())
@@ -120,6 +144,15 @@ struct TaskEditorView: View {
                 .stroke(Theme.stroke, lineWidth: 1)
         )
         .preferredColorScheme(.dark)
+        .onChange(of: text) { _, newText in
+            let firstLine = newText.split(separator: "\n", maxSplits: 1,
+                                          omittingEmptySubsequences: false)
+                                   .first.map(String.init) ?? ""
+            if let parsed = InputParser().parse(firstLine, now: .now,
+                                                defaultPriority: priority).deadline {
+                deadline = parsed
+            }
+        }
     }
 
     private var controls: some View {
@@ -132,10 +165,64 @@ struct TaskEditorView: View {
                     selection: $priority
                 )
             }
+            controlRow("时间") { deadlineControl }
             controlRow("状态") { statusMenu }
             controlRow("标签") {
                 TagPickerField(selected: $selectedTags, existing: allTags)
             }
+        }
+    }
+
+    private var deadlineBinding: Binding<Date> {
+        Binding(get: { deadline ?? defaultDeadline() }, set: { deadline = $0 })
+    }
+
+    private func defaultDeadline() -> Date {
+        let cal = Calendar.current
+        let hour = cal.dateComponents([.year, .month, .day, .hour], from: .now)
+        let base = cal.date(from: hour) ?? .now
+        return cal.date(byAdding: .hour, value: 1, to: base) ?? .now
+    }
+
+    @ViewBuilder
+    private var deadlineControl: some View {
+        if deadline != nil {
+            HStack(spacing: 8) {
+                Button { showingDatePicker = true } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "calendar").font(.system(size: 10))
+                        Text(deadlineBinding.wrappedValue.formatted(date: .abbreviated, time: .shortened))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .foregroundStyle(Theme.textPrimary)
+                    .noirPickerPill()
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showingDatePicker, arrowEdge: .bottom) {
+                    NoirDatePicker(date: deadlineBinding)
+                        .padding(12)
+                        .frame(width: 250)
+                        .background(Theme.panelBottom)
+                        .preferredColorScheme(.dark)
+                }
+                Button { deadline = nil } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Theme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            Button { deadline = defaultDeadline() } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar.badge.plus")
+                    Text("添加时间")
+                }
+                .foregroundStyle(Theme.textTertiary)
+                .noirPickerPill()
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -156,26 +243,74 @@ struct TaskEditorView: View {
     }
 
     private var statusMenu: some View {
-        Menu {
-            Button { columnID = nil } label: {
-                if columnID == nil { Label("无", systemImage: "checkmark") } else { Text("无") }
-            }
-            ForEach(columns) { col in
-                Button { columnID = col.id } label: {
-                    if columnID == col.id { Label(col.name, systemImage: "checkmark") }
-                    else { Text(col.name) }
-                }
-            }
-        } label: {
+        Button { showingStatusPicker = true } label: {
             HStack(spacing: 4) {
                 Text(currentColumnName)
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+                    .lineLimit(1)
+                    .foregroundStyle(columnID == nil ? Theme.textTertiary : Theme.textPrimary)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Theme.textTertiary)
             }
-            .foregroundStyle(Theme.textPrimary)
             .noirPickerPill()
         }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
+        .buttonStyle(.plain)
+        .popover(isPresented: $showingStatusPicker, arrowEdge: .bottom) {
+            statusPickerPopover
+        }
+    }
+
+    private var statusPickerPopover: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            statusPickerRow(title: "无", selected: columnID == nil) {
+                columnID = nil
+            }
+            if !columns.isEmpty {
+                Rectangle().fill(Theme.stroke).frame(height: 1)
+                    .padding(.vertical, 4)
+            }
+            ForEach(columns) { col in
+                statusPickerRow(title: col.name, selected: columnID == col.id) {
+                    columnID = col.id
+                }
+            }
+        }
+        .padding(8)
+        .frame(width: 180)
+        .background(Theme.panelBottom)
+        .preferredColorScheme(.dark)
+    }
+
+    private func statusPickerRow(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            showingStatusPicker = false
+        } label: {
+            HStack(spacing: 8) {
+                Text(title)
+                    .lineLimit(1)
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.accentText)
+                }
+            }
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func deleteTask() {
+        guard case .edit(let task) = mode else { return }
+        scheduler.cancel(for: task)
+        context.delete(task)
+        try? context.save()
+        onClose()
     }
 
     private func save() {
@@ -184,7 +319,8 @@ struct TaskEditorView: View {
         guard !title.isEmpty else { return }
         var fields = CaptureDraft.applyControls(to: r.fields,
                                                 priority: priority,
-                                                tags: selectedTags)
+                                                tags: selectedTags,
+                                                deadline: deadline)
         fields.title = title
 
         let task: TodoTask
@@ -221,10 +357,12 @@ private struct TokenStrip: View {
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(Theme.surface, in: Capsule())
+                    .lineLimit(1)
             }
             if chips.isEmpty {
                 Text("可在第一行用如「明天 18:00 每周一」补充")
                     .font(.caption2).foregroundStyle(Theme.textTertiary)
+                    .lineLimit(1)
             }
         }
     }

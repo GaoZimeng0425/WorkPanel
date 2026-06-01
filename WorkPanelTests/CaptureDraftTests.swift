@@ -72,20 +72,28 @@ struct CaptureDraftTests {
         var fields = ParsedInput()
         fields.priority = .low                 // 解析自 token 的值
         fields.tags = ["解析来的"]
-        let out = CaptureDraft.applyControls(to: fields, priority: .high, tags: ["工作"])
+        let out = CaptureDraft.applyControls(to: fields, priority: .high, tags: ["工作"], deadline: nil)
         #expect(out.priority == .high)         // 控件为准
         #expect(out.tags == ["工作"])          // 控件为准
     }
 
-    @Test func applyControlsKeepsDeadlineRecurrenceUrgency() {
+    @Test func applyControlsOverridesDeadlineKeepsRecurrenceUrgency() {
         var fields = ParsedInput()
-        fields.deadline = now
+        fields.deadline = now                  // 解析自 token
         fields.recurrence = .weekly
         fields.urgencyOverride = true
-        let out = CaptureDraft.applyControls(to: fields, priority: .medium, tags: [])
-        #expect(out.deadline == now)           // 仍来自 token
-        #expect(out.recurrence == .weekly)
+        let picked = now.addingTimeInterval(3600)
+        let out = CaptureDraft.applyControls(to: fields, priority: .medium, tags: [], deadline: picked)
+        #expect(out.deadline == picked)        // 控件为准
+        #expect(out.recurrence == .weekly)     // 仍来自 token
         #expect(out.urgencyOverride == true)
         #expect(out.tags == [])                // 控件清空标签
+    }
+
+    @Test func applyControlsClearsDeadlineWhenNil() {
+        var fields = ParsedInput()
+        fields.deadline = now
+        let out = CaptureDraft.applyControls(to: fields, priority: .medium, tags: [], deadline: nil)
+        #expect(out.deadline == nil)           // 控件清空截止时间
     }
 }
