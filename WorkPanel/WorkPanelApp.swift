@@ -3,7 +3,7 @@ import SwiftData
 
 enum SharedModel {
     @MainActor static let container: ModelContainer = {
-        let schema = Schema([TodoTask.self, BoardColumn.self])
+        let schema = Schema([TodoTask.self, BoardColumn.self, DayPlan.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
             return try ModelContainer(for: schema, configurations: [config])
