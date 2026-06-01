@@ -105,8 +105,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func toggleBoard() {
         if board.isVisible { board.hide(); return }
         board.show {
-            BoardView(onClose: { [weak self] in self?.board.hide() })
-                .modelContainer(SharedModel.container)
+            BoardView(
+                onClose: { [weak self] in self?.board.hide() },
+                onResizeChanged: { [weak self] dy in self?.board.resize(translationY: dy) },
+                onResizeEnded: { [weak self] in self?.board.endResize() }
+            )
+            .modelContainer(SharedModel.container)
         }
     }
 
