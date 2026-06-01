@@ -10,3 +10,6 @@
 
 # Xcode per-user state (scheme order, breakpoints, window layout)
 xcuserdata/
+
+# Release build artifacts (build.sh output)
+build/
