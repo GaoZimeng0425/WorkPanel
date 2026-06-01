@@ -222,4 +222,17 @@ struct MCPToolHandlersTests {
             _ = try await h.call("move_task", ["id": .string(t.id.uuidString), "columnID": .string(UUID().uuidString)])
         }
     }
+
+    @Test func createTaskAcceptsFractionalSecondsDeadline() async throws {
+        let (h, _, _) = try makeHandlers()
+        let json = try await h.call("create_task", ["title": "x", "deadline": "2026-06-03T09:00:00.000Z"])
+        #expect(try decodeTask(json).deadline != nil)
+    }
+
+    @Test func createTaskRejectsMalformedDeadline() async throws {
+        let (h, _, _) = try makeHandlers()
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("create_task", ["title": "x", "deadline": "nope"])
+        }
+    }
 }

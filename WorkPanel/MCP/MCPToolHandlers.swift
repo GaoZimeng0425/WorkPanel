@@ -66,7 +66,10 @@ final class MCPToolHandlers {
         if let p = args["priority"]?.stringValue, let pr = Priority(apiName: p) {
             tasks = tasks.filter { $0.priority == pr }
         }
-        if let s = args["dueBefore"]?.stringValue, let date = ISO8601Date.date(s) {
+        if args.contains("dueBefore") {
+            guard let s = args["dueBefore"]?.stringValue, let date = ISO8601Date.date(s) else {
+                throw ToolError.badArgument("Invalid 'dueBefore'")
+            }
             tasks = tasks.filter { ($0.deadline ?? .distantFuture) < date }
         }
         return try encode(tasks.map(dto))
@@ -90,7 +93,10 @@ final class MCPToolHandlers {
         parsed.title = title
         parsed.priority = args["priority"]?.stringValue.flatMap(Priority.init(apiName:)) ?? .medium
         parsed.tags = args["tags"]?.arrayValue?.compactMap(\.stringValue) ?? []
-        if let s = args["deadline"]?.stringValue, let date = ISO8601Date.date(s) {
+        if args.contains("deadline"), args["deadline"]?.isNull != true {
+            guard let s = args["deadline"]?.stringValue, let date = ISO8601Date.date(s) else {
+                throw ToolError.badArgument("Invalid 'deadline'")
+            }
             parsed.deadline = date
         }
         // validate columnID (if provided) before mutating anything
@@ -115,8 +121,9 @@ final class MCPToolHandlers {
         if let v = args["title"]?.stringValue { task.title = v }
         if let v = args["notes"]?.stringValue { task.notes = v }
         if args.contains("deadline") {
-            if let s = args["deadline"]?.stringValue, let d = ISO8601Date.date(s) { task.deadline = d }
-            else if args["deadline"]?.isNull == true { task.deadline = nil }
+            if args["deadline"]?.isNull == true { task.deadline = nil }
+            else if let s = args["deadline"]?.stringValue, let d = ISO8601Date.date(s) { task.deadline = d }
+            else { throw ToolError.badArgument("Invalid 'deadline'") }
         }
         if let v = args["priority"]?.stringValue, let p = Priority(apiName: v) { task.priority = p }
         if let arr = args["tags"]?.arrayValue { task.tags = arr.compactMap(\.stringValue) }

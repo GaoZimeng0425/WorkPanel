@@ -42,4 +42,10 @@ struct TaskDTOTests {
         #expect(dto.name == "测试中")
         #expect(dto.order == 2)
     }
+
+    @Test func iso8601AcceptsFractionalSeconds() {
+        #expect(ISO8601Date.date("2026-06-03T09:00:00.000Z") != nil)
+        #expect(ISO8601Date.date("2026-06-03T09:00:00Z") != nil)
+        #expect(ISO8601Date.date("not-a-date") == nil)
+    }
 }

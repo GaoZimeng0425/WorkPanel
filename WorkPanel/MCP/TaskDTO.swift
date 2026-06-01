@@ -2,9 +2,14 @@
 import Foundation
 
 enum ISO8601Date {
-    private nonisolated(unsafe) static let formatter = ISO8601DateFormatter()
-    nonisolated static func string(_ date: Date) -> String { formatter.string(from: date) }
-    nonisolated static func date(_ s: String) -> Date? { formatter.date(from: s) }
+    private nonisolated(unsafe) static let plain = ISO8601DateFormatter()
+    private nonisolated(unsafe) static let fractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    nonisolated static func string(_ date: Date) -> String { plain.string(from: date) }
+    nonisolated static func date(_ s: String) -> Date? { plain.date(from: s) ?? fractional.date(from: s) }
 }
 
 extension Priority {
