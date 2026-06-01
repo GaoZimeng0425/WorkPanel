@@ -31,13 +31,13 @@ enum Notice {
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         p.contentView = hosting
 
-        // 锚定在鼠标所在屏幕,水平居中、偏上 18% 处。
+        // 锚定在鼠标所在屏幕,水平居中、靠近底部。
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) }
             ?? NSScreen.main ?? NSScreen.screens.first
         guard let screen else { return }
         let visible = screen.visibleFrame
         let x = visible.midX - fitting.width / 2
-        let targetY = visible.maxY - visible.height * 0.18 - fitting.height / 2
+        let targetY = visible.minY + 90
 
         let start = NSRect(x: x, y: targetY - 28, width: fitting.width, height: fitting.height)
         let end = NSRect(x: x, y: targetY, width: fitting.width, height: fitting.height)
