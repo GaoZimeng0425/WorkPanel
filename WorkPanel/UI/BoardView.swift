@@ -8,6 +8,8 @@ struct BoardView: View {
     @Environment(\.modelContext) private var context
     @Query private var tasks: [TodoTask]
     @AppStorage(AppSettings.Key.boardViewMode) private var modeRaw = BoardViewMode.kanban.rawValue
+    @AppStorage(AppSettings.Key.lastPlannedDay) private var lastPlannedDay = 0.0
+    @State private var showPlanning = false
 
     private var store: BoardStore { BoardStore(context: context) }
     private var mode: BoardViewMode { BoardViewMode(rawValue: modeRaw) ?? .kanban }
@@ -29,7 +31,23 @@ struct BoardView: View {
                 .stroke(Theme.stroke, lineWidth: 1)
         )
         .preferredColorScheme(.dark)
-        .onAppear { store.seedDefaultColumnsIfNeeded(); try? context.save() }
+        .onAppear {
+            store.seedDefaultColumnsIfNeeded(); try? context.save()
+            let last = lastPlannedDay == 0 ? nil : Date(timeIntervalSinceReferenceDate: lastPlannedDay)
+            if PlanStore.needsPlanning(lastPlanned: last, now: .now, calendar: .current) {
+                showPlanning = true
+            }
+        }
+        .overlay {
+            if showPlanning {
+                PlanningView(onDone: { showPlanning = false })
+                    .background(
+                        LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
+                                       startPoint: .top, endPoint: .bottom)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.panelRadius, style: .continuous))
+            }
+        }
         .onKeyPress(.escape) { onClose(); return .handled }
     }
 
@@ -37,8 +55,9 @@ struct BoardView: View {
         switch mode {
         case .kanban:   KanbanLensView()
         case .matrix:   MatrixLensView()
-        case .today:    TodayLensView()
+        case .today:    TodayLensView(onPlan: { showPlanning = true })
         case .priority: PriorityLensView()
+        case .review:   ReviewLensView()
         }
     }
 
@@ -85,6 +104,7 @@ struct BoardView: View {
         case .matrix:   "square.grid.2x2"
         case .today:    "calendar"
         case .priority: "flag"
+        case .review:   "chart.bar"
         }
     }
 }

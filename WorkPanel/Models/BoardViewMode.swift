@@ -6,7 +6,7 @@ enum BoardViewMode: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var label: String {
+    nonisolated var label: String {
         switch self {
         case .kanban:   "看板"
         case .matrix:   "象限"
