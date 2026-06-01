@@ -7,9 +7,19 @@ enum SharedModel {
         ProcessInfo.processInfo.arguments.contains("--uitest")
     }
 
+    /// 显式固定的 store 路径,开发与生产共用同一个文件(沙盒已关闭,可访问全局路径)。
+    @MainActor static let storeURL: URL = {
+        let dir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/WorkPanel", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("WorkPanel.store")
+    }()
+
     @MainActor static let container: ModelContainer = {
         let schema = Schema([TodoTask.self, BoardColumn.self, DayPlan.self])
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: isUITesting)
+        let config = isUITesting
+            ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            : ModelConfiguration(schema: schema, url: storeURL)
         do {
             let container = try ModelContainer(for: schema, configurations: [config])
             if isUITesting { seedUITestData(into: container.mainContext) }
