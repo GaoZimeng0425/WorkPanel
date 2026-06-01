@@ -15,4 +15,18 @@ struct AppSettingsTests {
             #expect(!a.label.isEmpty)
         }
     }
+
+    @Test func mcpTokenGeneratesOnceAndPersists() {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: AppSettings.Key.mcpToken)
+        let first = AppSettings.mcpToken
+        #expect(!first.isEmpty)
+        #expect(AppSettings.mcpToken == first)   // stable across reads
+        defaults.removeObject(forKey: AppSettings.Key.mcpToken)   // cleanup
+    }
+
+    @Test func mcpPortDefaultsTo8787() {
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.mcpPort)
+        #expect(AppSettings.mcpPort == 8787)
+    }
 }
