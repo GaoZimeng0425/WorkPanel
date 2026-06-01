@@ -13,6 +13,7 @@ enum AppSettings {
         static let mcpEnabled = "mcpEnabled"
         static let mcpPort = "mcpPort"
         static let mcpToken = "mcpToken"
+        static let boardHeight = "boardHeight"   // Double: 看板像素高度,360 为最小/默认
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
@@ -52,6 +53,10 @@ enum AppSettings {
         let t = UUID().uuidString
         UserDefaults.standard.set(t, forKey: Key.mcpToken)
         return t
+    }
+    static var boardHeight: CGFloat {
+        let h = UserDefaults.standard.double(forKey: Key.boardHeight)
+        return h == 0 ? 360 : CGFloat(h)
     }
 }
 
