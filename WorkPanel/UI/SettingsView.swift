@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import KeyboardShortcuts
 
@@ -9,6 +10,9 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.defaultPriority) private var defaultPriority = Priority.medium.rawValue
     @AppStorage(AppSettings.Key.reminderLeadMinutes) private var leadMinutes = 0
     @AppStorage(AppSettings.Key.notificationSound) private var sound = true
+    @AppStorage(AppSettings.Key.mcpEnabled) private var mcpEnabled = false
+    @AppStorage(AppSettings.Key.mcpPort) private var mcpPort = 8787
+    @State private var mcpToken = AppSettings.mcpToken
 
     private let leadOptions = [0, 5, 15, 30]
 
@@ -84,6 +88,39 @@ struct SettingsView: View {
                 divider
                 row("通知声音", systemImage: "speaker.wave.2") {
                     Toggle("", isOn: $sound).labelsHidden().toggleStyle(.switch)
+                }
+            }
+
+            section("AI 接入 (MCP)", systemImage: "sparkles") {
+                row("启用本地服务", systemImage: "network") {
+                    Toggle("", isOn: $mcpEnabled)
+                        .labelsHidden().toggleStyle(.switch)
+                        .onChange(of: mcpEnabled) { _, _ in
+                            NotificationCenter.default.post(name: .mcpSettingsChanged, object: nil)
+                        }
+                }
+                divider
+                row("端口", systemImage: "number") {
+                    TextField("", value: $mcpPort, format: .number.grouping(.never))
+                        .labelsHidden().frame(width: 80)
+                        .multilineTextAlignment(.trailing)
+                        .onSubmit {
+                            NotificationCenter.default.post(name: .mcpSettingsChanged, object: nil)
+                        }
+                }
+                divider
+                row("连接地址", systemImage: "link") {
+                    Text("http://127.0.0.1:\(mcpPort)/mcp")
+                        .font(.callout.monospaced()).foregroundStyle(Theme.textSecondary)
+                        .textSelection(.enabled)
+                }
+                divider
+                row("访问令牌", systemImage: "key") {
+                    Button("复制令牌") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(mcpToken, forType: .string)
+                    }
+                    .buttonStyle(NoirPillButtonStyle())
                 }
             }
 
