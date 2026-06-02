@@ -99,12 +99,14 @@ final class BoardPanelController: NSObject {
                            width: width, height: currentHeight)
         panel.contentView = makeContent(content(), size: final.size)
         let start = final.offsetBy(dx: 0, dy: -(currentHeight + margin))
-        panel.setFrame(start, display: false)
-        // 不调用 NSApp.activate:看板作为浮层出现,不抢占当前 App 的 active 状态。
-        // nonactivatingPanel + canBecomeKey 仍能接收 Esc / ⌘, / 文本输入。
+        // 先在屏内 final 处 orderFront 并强制绘制,让透明无边框窗口完成一次屏上合成;否则从屏幕下方
+        // 滑入时窗口内容在滑动期间不会被合成到屏幕(frame 在动却看不到内容)。随后同一周期瞬移到起点,
+        // 屏幕只会呈现起点(不闪现 final),下一周期再上滑到 final。
+        panel.setFrame(final, display: false)
         panel.makeKeyAndOrderFront(nil)
-        // 首次 orderFront 与位移动画在同一 runloop 周期时,窗口尚未在 start 完成首帧显示,
-        // animator 无法插值会直接跳到 final(展开看不到动画)。推迟一帧再做上滑。
+        panel.displayIfNeeded()
+        panel.setFrame(start, display: false)
+        LogService.debug("show currentHeight=\(currentHeight) start=\(NSStringFromRect(start))", category: "Board")
         let duration = Self.slideDuration(forHeight: currentHeight, minHeight: minHeight,
                                           margin: margin, base: 0.28)
         DispatchQueue.main.async { [weak self] in
