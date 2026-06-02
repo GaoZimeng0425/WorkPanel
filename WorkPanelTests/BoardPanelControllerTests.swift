@@ -31,14 +31,4 @@ struct BoardPanelControllerTests {
         #expect(BoardPanelController.resizedHeight(startHeight: 800, startMouseY: 100,
                                                    currentMouseY: 400, min: 360, max: 900) == 900)
     }
-
-    // 上滑速度恒定:最小高度时仍是 base 时长,越高用时越长。
-    @Test func slideDurationMatchesBaseAtMinHeight() {
-        #expect(BoardPanelController.slideDuration(forHeight: 360, minHeight: 360, margin: 16, base: 0.28) == 0.28)
-    }
-
-    @Test func slideDurationScalesWithDistance() {
-        // (736 + 16) / (360 + 16) = 2.0 → 时长翻倍
-        #expect(BoardPanelController.slideDuration(forHeight: 736, minHeight: 360, margin: 16, base: 0.28) == 0.56)
-    }
 }

@@ -80,13 +80,6 @@ final class BoardPanelController: NSObject {
         clampHeight(startHeight + (currentMouseY - startMouseY), min: minH, max: maxH)
     }
 
-    /// 上滑/下滑动画时长:与滑动距离(高度 + margin)成正比,使各高度下的滑动速度恒定。
-    /// 最小高度时等于 base,避免高看板因固定时长而“一闪而过”。
-    nonisolated static func slideDuration(forHeight height: CGFloat, minHeight: CGFloat,
-                                          margin: CGFloat, base: CGFloat) -> CGFloat {
-        base * (height + margin) / (minHeight + margin)
-    }
-
     func show<Content: View>(@ViewBuilder _ content: () -> Content) {
         guard let screen = NSScreen.main else { return }
         currentHeight = Self.clampHeight(AppSettings.boardHeight,
@@ -105,8 +98,7 @@ final class BoardPanelController: NSObject {
         panel.makeKeyAndOrderFront(nil)
         LogService.debug("show currentHeight=\(currentHeight)", category: "Board")
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = Self.slideDuration(forHeight: currentHeight, minHeight: minHeight,
-                                              margin: margin, base: 0.28)
+            ctx.duration = 0.28          // 固定时长,各高度一致
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(final, display: true)
         }
@@ -116,8 +108,7 @@ final class BoardPanelController: NSObject {
         guard let panel, panel.isVisible else { return }
         let target = panel.frame.offsetBy(dx: 0, dy: -(panel.frame.height + margin))
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = Self.slideDuration(forHeight: panel.frame.height, minHeight: minHeight,
-                                              margin: margin, base: 0.22)
+            ctx.duration = 0.22          // 固定时长,各高度一致
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().setFrame(target, display: true)
         }, completionHandler: { panel.orderOut(nil) })
