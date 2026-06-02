@@ -28,7 +28,12 @@ struct AIContextTests {
     }
 
     @Test func renderInProgressHandlesEmpty() {
-        let s = AIContext.renderInProgress([])
-        #expect(!s.isEmpty)   // 给个占位说明,而非空串
+        #expect(AIContext.renderInProgress([]) == "(当前没有进行中的任务)")
+    }
+
+    @Test func renderInProgressHandlesAllCompleted() {
+        let done = TodoTask(title: "已完成任务", priority: .medium)
+        done.isCompleted = true
+        #expect(AIContext.renderInProgress([done]) == "(当前没有进行中的任务)")
     }
 }

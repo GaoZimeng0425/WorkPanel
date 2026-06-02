@@ -6,19 +6,11 @@ enum AIContext {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH:mm"; return f
     }()
 
-    private static func priorityLabel(_ p: Priority) -> String {
-        switch p {
-        case .high: "高"
-        case .medium: "中"
-        case .low: "低"
-        }
-    }
-
     /// 单个任务:标题/优先级/截止/标签/备注。
     static func renderTask(_ task: TodoTask) -> String {
         var lines: [String] = []
         lines.append("标题: \(task.title)")
-        lines.append("优先级: \(priorityLabel(task.priority))")
+        lines.append("优先级: \(Theme.priorityLabel(task.priority))")
         if let d = task.deadline {
             lines.append("截止: \(dateFormatter.string(from: d))")
         }
@@ -36,9 +28,9 @@ enum AIContext {
         let pending = tasks.filter { !$0.isCompleted }
         guard !pending.isEmpty else { return "(当前没有进行中的任务)" }
         return pending.map { t in
-            var line = "- [\(priorityLabel(t.priority))] \(t.title)"
+            var line = "- [\(Theme.priorityLabel(t.priority))] \(t.title)"
             if let d = t.deadline {
-                line += "(截止 \(dateFormatter.string(from: d)))"
+                line += " (截止 \(dateFormatter.string(from: d)))"
             }
             if !t.tags.isEmpty {
                 line += " " + t.tags.map { "#\($0)" }.joined(separator: " ")
