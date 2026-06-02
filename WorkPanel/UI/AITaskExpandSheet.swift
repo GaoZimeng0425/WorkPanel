@@ -11,8 +11,9 @@ struct AITaskExpandSheet: View {
     @State private var result: String = ""
     @State private var loading = true
     @State private var failed = false
+    @State private var runTask: Task<Void, Never>?
 
-    private let ai = AIService()
+    @State private var ai = AIService()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -35,6 +36,7 @@ struct AITaskExpandSheet: View {
                         Spacer() }
                         .frame(maxHeight: .infinity)
                 } else {
+                    // 绑定到 result:用户可在应用前直接勾选/编辑预览内容
                     ScrollView { MarkdownPreview(text: $result).padding(8) }
                 }
             }
@@ -75,14 +77,17 @@ struct AITaskExpandSheet: View {
     }
 
     private func run() {
+        runTask?.cancel()
         loading = true
         failed = false
-        Task {
+        runTask = Task {
             do {
                 let text = try await ai.run(systemPrompt: prompt.template, userContext: taskContext)
+                guard !Task.isCancelled else { return }
                 result = text
                 loading = false
             } catch {
+                guard !Task.isCancelled else { return }
                 loading = false
                 failed = true
                 Notice.show(AIService.message(for: error))
