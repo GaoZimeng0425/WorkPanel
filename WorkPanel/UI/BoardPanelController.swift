@@ -103,11 +103,19 @@ final class BoardPanelController: NSObject {
         // 不调用 NSApp.activate:看板作为浮层出现,不抢占当前 App 的 active 状态。
         // nonactivatingPanel + canBecomeKey 仍能接收 Esc / ⌘, / 文本输入。
         panel.makeKeyAndOrderFront(nil)
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = Self.slideDuration(forHeight: currentHeight, minHeight: minHeight,
-                                              margin: margin, base: 0.28)
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().setFrame(final, display: true)
+        // 首次 orderFront 与位移动画在同一 runloop 周期时,窗口尚未在 start 完成首帧显示,
+        // animator 无法插值会直接跳到 final(展开看不到动画)。推迟一帧再做上滑。
+        let duration = Self.slideDuration(forHeight: currentHeight, minHeight: minHeight,
+                                          margin: margin, base: 0.28)
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let panel = self?.panel else { return }
+                NSAnimationContext.runAnimationGroup { ctx in
+                    ctx.duration = duration
+                    ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    panel.animator().setFrame(final, display: true)
+                }
+            }
         }
     }
 
