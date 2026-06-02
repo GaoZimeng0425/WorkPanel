@@ -26,6 +26,7 @@ struct TaskEditorView: View {
     @State private var showingStatusPicker = false
     @State private var showingDatePicker = false
     @State private var deadline: Date?
+    @State private var expandPrompt: AIPrompt?
     private let base: ParsedInput
 
     @Query(sort: \BoardColumn.order) private var columns: [BoardColumn]
@@ -80,6 +81,23 @@ struct TaskEditorView: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.textPrimary)
                 Spacer()
+                if !AppSettings.aiBaseURL.isEmpty {
+                    let singleTaskPrompts = AIPromptStore.load().filter { $0.shape == .singleTask }
+                    if !singleTaskPrompts.isEmpty {
+                        Menu {
+                            ForEach(singleTaskPrompts) { p in
+                                Button(p.name) { expandPrompt = p }
+                            }
+                        } label: {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Theme.accentText)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                        .disabled(resolved.fields.title.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
                 NoirSegmented(
                     segments: [.init(value: false, label: "编辑"),
                                .init(value: true, label: "预览")],
@@ -152,6 +170,14 @@ struct TaskEditorView: View {
                                                 defaultPriority: priority).deadline {
                 deadline = parsed
             }
+        }
+        .sheet(item: $expandPrompt) { p in
+            AITaskExpandSheet(
+                prompt: p,
+                taskContext: AIContext.renderTask(previewTask()),
+                onApply: { appendToNotes($0) },
+                onClose: { expandPrompt = nil }
+            )
         }
     }
 
@@ -311,6 +337,31 @@ struct TaskEditorView: View {
         context.delete(task)
         try? context.save()
         onClose()
+    }
+
+    /// 用编辑器当前内容构造一个临时任务,喂给 AI(包含尚未保存的改动)。
+    private func previewTask() -> TodoTask {
+        let r = resolved
+        let fields = CaptureDraft.applyControls(to: r.fields,
+                                                priority: priority,
+                                                tags: selectedTags,
+                                                deadline: deadline)
+        return TodoTask(title: r.fields.title.trimmingCharacters(in: .whitespaces),
+                        notes: r.notes,
+                        deadline: fields.deadline,
+                        priority: fields.priority,
+                        tags: fields.tags)
+    }
+
+    /// 把 AI 结果作为新的一段备注追加到编辑器文本末尾。
+    private func appendToNotes(_ addition: String) {
+        let trimmed = addition.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if text.hasSuffix("\n") {
+            text += "\n\(trimmed)\n"
+        } else {
+            text += "\n\n\(trimmed)\n"
+        }
     }
 
     private func save() {
