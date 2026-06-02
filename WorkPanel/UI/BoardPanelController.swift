@@ -32,6 +32,7 @@ final class BoardPanelController: NSObject {
     private var currentHeight: CGFloat = 360
     private var resizing = false
     private var dragStartHeight: CGFloat = 0
+    private var dragStartMouseY: CGFloat = 0
 
     private func maxHeight(for screen: NSScreen) -> CGFloat {
         screen.visibleFrame.height - margin * 2
@@ -42,6 +43,14 @@ final class BoardPanelController: NSObject {
     /// 把高度夹紧到 [min, max]。纯函数,便于无屏幕环境单测。
     nonisolated static func clampHeight(_ proposed: CGFloat, min minH: CGFloat, max maxH: CGFloat) -> CGFloat {
         Swift.min(Swift.max(proposed, minH), maxH)
+    }
+
+    /// 由拖拽起点的高度与屏幕光标 y(向上为正)算出新高度,夹紧到 [min, max]。
+    /// 用屏幕绝对坐标而非视图内位移:面板向上增长会移动把手所在的视图坐标系,
+    /// 若以视图内位移驱动会形成反馈回路(半速跟手 + 抖动)。屏幕坐标不随面板缩放移动。
+    nonisolated static func resizedHeight(startHeight: CGFloat, startMouseY: CGFloat,
+                                          currentMouseY: CGFloat, min minH: CGFloat, max maxH: CGFloat) -> CGFloat {
+        clampHeight(startHeight + (currentMouseY - startMouseY), min: minH, max: maxH)
     }
 
     func show<Content: View>(@ViewBuilder _ content: () -> Content) {
@@ -82,12 +91,13 @@ final class BoardPanelController: NSObject {
     }
 
     /// 拖拽把手时实时调整高度:底边锚定不动,高度向上增长。无动画。
-    func resize(translationY: CGFloat) {
+    /// 以屏幕光标绝对位置驱动(`NSEvent.mouseLocation`),与面板缩放解耦,保证 1:1 跟手且不抖动。
+    func resize() {
         guard let panel, let screen = panel.screen ?? NSScreen.main else { return }
-        if !resizing { dragStartHeight = currentHeight; resizing = true }
-        // 向上拖 translationY 为负 → 变高。
-        currentHeight = Self.clampHeight(dragStartHeight - translationY,
-                                         min: minHeight, max: maxHeight(for: screen))
+        let mouseY = NSEvent.mouseLocation.y
+        if !resizing { dragStartHeight = currentHeight; dragStartMouseY = mouseY; resizing = true }
+        currentHeight = Self.resizedHeight(startHeight: dragStartHeight, startMouseY: dragStartMouseY,
+                                           currentMouseY: mouseY, min: minHeight, max: maxHeight(for: screen))
         var frame = panel.frame
         frame.size.height = currentHeight
         panel.setFrame(frame, display: true)

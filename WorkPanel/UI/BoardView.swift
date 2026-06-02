@@ -5,7 +5,7 @@ import SwiftData
 /// 看板外壳:标题栏 + 透镜 tab 切换 + 按模式分发到各透镜视图。
 struct BoardView: View {
     let onClose: () -> Void
-    let onResizeChanged: (CGFloat) -> Void
+    let onResizeChanged: () -> Void
     let onResizeEnded: () -> Void
 
     @Environment(\.modelContext) private var context
@@ -74,7 +74,7 @@ struct BoardView: View {
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 1)
-                    .onChanged { onResizeChanged($0.translation.height) }
+                    .onChanged { _ in onResizeChanged() }
                     .onEnded { _ in onResizeEnded() }
             )
             .onHover { inside in

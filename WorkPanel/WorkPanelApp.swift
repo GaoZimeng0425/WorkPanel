@@ -107,7 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         board.show {
             BoardView(
                 onClose: { [weak self] in self?.board.hide() },
-                onResizeChanged: { [weak self] dy in self?.board.resize(translationY: dy) },
+                onResizeChanged: { [weak self] in self?.board.resize() },
                 onResizeEnded: { [weak self] in self?.board.endResize() }
             )
             .modelContainer(SharedModel.container)
