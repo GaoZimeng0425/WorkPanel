@@ -24,13 +24,40 @@ final class KeyablePanel: NSPanel {
     }
 }
 
+/// 看板顶部的拉伸把手(纯交互,视觉胶囊由 SwiftUI 绘制)。
+/// 用 AppKit 鼠标跟踪循环而非 SwiftUI DragGesture:mouseDown 后直接拉取 mouseDragged/mouseUp,
+/// 同步缩放面板,绕开 SwiftUI 更新周期带来的抖动,且 mouseUp 一定触发 → 高度持久化可靠。
+final class ResizeHandleView: NSView {
+    var onBegin: (() -> Void)?
+    var onDrag: (() -> Void)?
+    var onEnd: (() -> Void)?
+
+    // 浮层面板非激活,允许首次点击即开始拖拽。
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .resizeUpDown)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onBegin?()
+        var dragging = true
+        while dragging,
+              let e = NSApp.nextEvent(matching: [.leftMouseDragged, .leftMouseUp],
+                                      until: .distantFuture, inMode: .eventTracking, dequeue: true) {
+            if e.type == .leftMouseUp { dragging = false } else { onDrag?() }
+        }
+        onEnd?()
+    }
+}
+
 @MainActor
 final class BoardPanelController: NSObject {
     private var panel: NSPanel?
     private let minHeight: CGFloat = 360
     private let margin: CGFloat = 16
+    private let handleStripHeight: CGFloat = 16   // 与 SwiftUI 胶囊条等高(胶囊 4 + 上下 padding 6)
     private var currentHeight: CGFloat = 360
-    private var resizing = false
     private var dragStartHeight: CGFloat = 0
     private var dragStartMouseY: CGFloat = 0
 
@@ -53,24 +80,32 @@ final class BoardPanelController: NSObject {
         clampHeight(startHeight + (currentMouseY - startMouseY), min: minH, max: maxH)
     }
 
+    /// 上滑/下滑动画时长:与滑动距离(高度 + margin)成正比,使各高度下的滑动速度恒定。
+    /// 最小高度时等于 base,避免高看板因固定时长而“一闪而过”。
+    nonisolated static func slideDuration(forHeight height: CGFloat, minHeight: CGFloat,
+                                          margin: CGFloat, base: CGFloat) -> CGFloat {
+        base * (height + margin) / (minHeight + margin)
+    }
+
     func show<Content: View>(@ViewBuilder _ content: () -> Content) {
         guard let screen = NSScreen.main else { return }
         currentHeight = Self.clampHeight(AppSettings.boardHeight,
                                          min: minHeight, max: maxHeight(for: screen))
         let panel = panel ?? makePanel()
         self.panel = panel
-        panel.contentView = NSHostingView(rootView: content())
         let visible = screen.visibleFrame
         let width = visible.width - margin * 2
         let final = NSRect(x: visible.minX + margin, y: visible.minY + margin,
                            width: width, height: currentHeight)
+        panel.contentView = makeContent(content(), size: final.size)
         let start = final.offsetBy(dx: 0, dy: -(currentHeight + margin))
         panel.setFrame(start, display: false)
         // 不调用 NSApp.activate:看板作为浮层出现,不抢占当前 App 的 active 状态。
         // nonactivatingPanel + canBecomeKey 仍能接收 Esc / ⌘, / 文本输入。
         panel.makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.28
+            ctx.duration = Self.slideDuration(forHeight: currentHeight, minHeight: minHeight,
+                                              margin: margin, base: 0.28)
             ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(final, display: true)
         }
@@ -80,7 +115,8 @@ final class BoardPanelController: NSObject {
         guard let panel, panel.isVisible else { return }
         let target = panel.frame.offsetBy(dx: 0, dy: -(panel.frame.height + margin))
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.22
+            ctx.duration = Self.slideDuration(forHeight: panel.frame.height, minHeight: minHeight,
+                                              margin: margin, base: 0.22)
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().setFrame(target, display: true)
         }, completionHandler: { panel.orderOut(nil) })
@@ -90,22 +126,45 @@ final class BoardPanelController: NSObject {
         if isVisible { hide() } else { show(content) }
     }
 
-    /// 拖拽把手时实时调整高度:底边锚定不动,高度向上增长。无动画。
-    /// 以屏幕光标绝对位置驱动(`NSEvent.mouseLocation`),与面板缩放解耦,保证 1:1 跟手且不抖动。
+    /// 容器:SwiftUI 内容铺满,顶部叠一条透明的 AppKit 拉伸把手。
+    private func makeContent<Content: View>(_ root: Content, size: NSSize) -> NSView {
+        let container = NSView(frame: NSRect(origin: .zero, size: size))
+
+        let hosting = NSHostingView(rootView: root)
+        hosting.frame = container.bounds
+        hosting.autoresizingMask = [.width, .height]
+        container.addSubview(hosting)
+
+        let handle = ResizeHandleView(frame: NSRect(x: 0, y: size.height - handleStripHeight,
+                                                    width: size.width, height: handleStripHeight))
+        handle.autoresizingMask = [.width, .minYMargin]   // 贴顶、随宽度伸缩
+        handle.onBegin = { [weak self] in self?.resizeBegan() }
+        handle.onDrag = { [weak self] in self?.resize() }
+        handle.onEnd = { [weak self] in self?.resizeEnded() }
+        container.addSubview(handle)
+
+        return container
+    }
+
+    /// 拖拽开始:记录起点高度与屏幕光标 y。
+    func resizeBegan() {
+        dragStartHeight = currentHeight
+        dragStartMouseY = NSEvent.mouseLocation.y
+    }
+
+    /// 拖拽中:底边锚定不动,高度向上增长。以屏幕光标绝对位置驱动,与面板缩放解耦。无动画。
     func resize() {
         guard let panel, let screen = panel.screen ?? NSScreen.main else { return }
-        let mouseY = NSEvent.mouseLocation.y
-        if !resizing { dragStartHeight = currentHeight; dragStartMouseY = mouseY; resizing = true }
         currentHeight = Self.resizedHeight(startHeight: dragStartHeight, startMouseY: dragStartMouseY,
-                                           currentMouseY: mouseY, min: minHeight, max: maxHeight(for: screen))
+                                           currentMouseY: NSEvent.mouseLocation.y,
+                                           min: minHeight, max: maxHeight(for: screen))
         var frame = panel.frame
         frame.size.height = currentHeight
         panel.setFrame(frame, display: true)
     }
 
-    /// 松手:落定高度并持久化。
-    func endResize() {
-        resizing = false
+    /// 松手:落定高度并持久化(mouseUp 必触发,持久化可靠)。
+    func resizeEnded() {
         UserDefaults.standard.set(Double(currentHeight), forKey: AppSettings.Key.boardHeight)
     }
 

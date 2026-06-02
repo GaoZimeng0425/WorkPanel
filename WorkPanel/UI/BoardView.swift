@@ -1,12 +1,9 @@
-import AppKit
 import SwiftUI
 import SwiftData
 
 /// 看板外壳:标题栏 + 透镜 tab 切换 + 按模式分发到各透镜视图。
 struct BoardView: View {
     let onClose: () -> Void
-    let onResizeChanged: () -> Void
-    let onResizeEnded: () -> Void
 
     @Environment(\.modelContext) private var context
     @Query private var tasks: [TodoTask]
@@ -65,22 +62,13 @@ struct BoardView: View {
         }
     }
 
+    // 视觉胶囊条;拉伸交互由顶部叠加的 AppKit ResizeHandleView 处理。
     private var resizeHandle: some View {
         Capsule()
             .fill(Theme.textTertiary.opacity(0.4))
             .frame(width: 36, height: 4)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .onChanged { _ in onResizeChanged() }
-                    .onEnded { _ in onResizeEnded() }
-            )
-            .onHover { inside in
-                if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
-            }
-            .accessibilityLabel("调整看板高度")
     }
 
     private var header: some View {
