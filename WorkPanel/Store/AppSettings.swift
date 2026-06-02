@@ -14,6 +14,10 @@ enum AppSettings {
         static let mcpPort = "mcpPort"
         static let mcpToken = "mcpToken"
         static let boardHeight = "boardHeight"   // Double: 看板像素高度,360 为最小/默认
+        static let aiBaseURL = "aiBaseURL"
+        static let aiModel = "aiModel"
+        static let aiAPIKey = "aiAPIKey"   // 明文,与 mcpToken 一致
+        static let aiPrompts = "aiPrompts" // JSON 编码的 [AIPrompt]
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
@@ -57,6 +61,15 @@ enum AppSettings {
     static var boardHeight: CGFloat {
         let h = UserDefaults.standard.double(forKey: Key.boardHeight)
         return h == 0 ? 360 : CGFloat(h)
+    }
+    static var aiBaseURL: String {
+        UserDefaults.standard.string(forKey: Key.aiBaseURL) ?? ""
+    }
+    static var aiModel: String {
+        UserDefaults.standard.string(forKey: Key.aiModel) ?? ""
+    }
+    static var aiAPIKey: String {
+        UserDefaults.standard.string(forKey: Key.aiAPIKey) ?? ""
     }
 }
 
