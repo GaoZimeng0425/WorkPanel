@@ -19,6 +19,7 @@ struct AIRequestTests {
         let req = try AIRequest.build(config: config, system: "S", user: "U")
         let body = try JSONSerialization.jsonObject(with: req.httpBody ?? Data()) as? [String: Any]
         #expect(body?["model"] as? String == "gpt-4o-mini")
+        #expect(body?["stream"] as? Bool == false)
         let messages = body?["messages"] as? [[String: String]]
         #expect(messages?.count == 2)
         #expect(messages?[0]["role"] == "system")
