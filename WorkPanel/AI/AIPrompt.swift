@@ -40,6 +40,7 @@ enum AIPromptStore {
     ]
 
     static func load() -> [AIPrompt] {
+        // 缺失或为空(用户清空了全部)都回落到内置默认,保证两个内置动作始终可用。
         guard let raw = UserDefaults.standard.string(forKey: AppSettings.Key.aiPrompts),
               let data = raw.data(using: .utf8),
               let prompts = try? JSONDecoder().decode([AIPrompt].self, from: data),

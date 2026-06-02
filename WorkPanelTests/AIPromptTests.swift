@@ -30,6 +30,7 @@ struct AIPromptTests {
         #expect(loaded[0].name == "我的拓展")
         #expect(loaded[2].template == "CCC")
         #expect(loaded[1].shape == .review)
+        #expect(loaded[0].id == custom[0].id)
     }
 
     @Test func defaultsHaveStableIDsAcrossLoads() {
@@ -38,5 +39,9 @@ struct AIPromptTests {
         let a = AIPromptStore.load()
         let b = AIPromptStore.load()
         #expect(a.map(\.id) == b.map(\.id))
+        #expect(a.map(\.id) == [
+            UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+        ])
     }
 }
