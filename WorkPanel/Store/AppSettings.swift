@@ -71,6 +71,10 @@ enum AppSettings {
     static var aiAPIKey: String {
         UserDefaults.standard.string(forKey: Key.aiAPIKey) ?? ""
     }
+    /// 三项配置齐全才算可用——AI 入口的显示门槛,与 AIRequest.build 的校验一致。
+    static var aiConfigured: Bool {
+        !aiBaseURL.isEmpty && !aiModel.isEmpty && !aiAPIKey.isEmpty
+    }
 }
 
 enum Appearance: String, CaseIterable, Identifiable {

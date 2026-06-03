@@ -81,7 +81,7 @@ struct TaskEditorView: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.textPrimary)
                 Spacer()
-                if !AppSettings.aiBaseURL.isEmpty {
+                if AppSettings.aiConfigured {
                     let singleTaskPrompts = AIPromptStore.load().filter { $0.shape == .singleTask }
                     if !singleTaskPrompts.isEmpty {
                         Menu {

@@ -93,7 +93,7 @@ struct ReviewLensView: View {
 
     @ViewBuilder
     private var aiSection: some View {
-        if !AppSettings.aiBaseURL.isEmpty, !reviewPrompts.isEmpty {
+        if AppSettings.aiConfigured, !reviewPrompts.isEmpty {
             section("AI 总结") {
                 HStack(spacing: 8) {
                     Picker("", selection: Binding(
