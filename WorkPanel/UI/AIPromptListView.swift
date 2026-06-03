@@ -60,7 +60,7 @@ struct AIPromptListView: View {
 
 /// 单个 prompt 的编辑表单:名字、形状、模板正文。
 private struct AIPromptEditor: View {
-    @State var prompt: AIPrompt
+    @State private var prompt: AIPrompt
     let onSave: (AIPrompt) -> Void
     let onCancel: () -> Void
 
