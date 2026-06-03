@@ -9,6 +9,11 @@ struct ReviewLensView: View {
     @Query private var tasks: [TodoTask]
     @Query private var plans: [DayPlan]
 
+    @State private var aiSummary: String = ""
+    @State private var aiLoading = false
+    @State private var aiPromptID: UUID?
+    private let ai = AIService()
+
     private var calendar: Calendar { .current }
     private var now: Date { .now }
 
@@ -37,6 +42,7 @@ struct ReviewLensView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                aiSection
                 section("本周 · 承诺 vs 完成") {
                     if dayStats.isEmpty {
                         Text("本周还没有规划记录")
@@ -79,6 +85,58 @@ struct ReviewLensView: View {
             .padding(16)
         }
         .scrollEdgeFade()
+    }
+
+    private var reviewPrompts: [AIPrompt] {
+        AIPromptStore.load().filter { $0.shape == .review }
+    }
+
+    @ViewBuilder
+    private var aiSection: some View {
+        if !AppSettings.aiBaseURL.isEmpty, !reviewPrompts.isEmpty {
+            section("AI 总结") {
+                HStack(spacing: 8) {
+                    Picker("", selection: Binding(
+                        get: { aiPromptID ?? reviewPrompts.first?.id },
+                        set: { aiPromptID = $0 }
+                    )) {
+                        ForEach(reviewPrompts) { p in
+                            Text(p.name).tag(Optional(p.id))
+                        }
+                    }
+                    .labelsHidden().fixedSize()
+
+                    Button(aiLoading ? "生成中…" : "生成总结") { generate() }
+                        .buttonStyle(NoirPillButtonStyle(prominent: true))
+                        .disabled(aiLoading)
+                    Spacer()
+                }
+                if aiLoading {
+                    ProgressView().padding(.top, 4)
+                } else if !aiSummary.isEmpty {
+                    MarkdownPreview(text: $aiSummary)
+                        .padding(.top, 4)
+                }
+            }
+        }
+    }
+
+    private func generate() {
+        let prompts = reviewPrompts
+        guard let prompt = prompts.first(where: { $0.id == aiPromptID }) ?? prompts.first
+        else { return }
+        aiLoading = true
+        Task {
+            do {
+                let text = try await ai.run(systemPrompt: prompt.template,
+                                            userContext: AIContext.renderInProgress(tasks))
+                aiSummary = text
+                aiLoading = false
+            } catch {
+                aiLoading = false
+                Notice.show(AIService.message(for: error))
+            }
+        }
     }
 
     @ViewBuilder
