@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @MainActor
-final class PanelController: NSObject, NSWindowDelegate {
+final class PanelController {
     private var panel: NSPanel?
 
     var isVisible: Bool { panel?.isVisible ?? false }
@@ -41,7 +41,6 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.onCancel = { [weak self] in self?.hide() }
-        panel.delegate = self
         return panel
     }
 
@@ -52,10 +51,5 @@ final class PanelController: NSObject, NSWindowDelegate {
         let x = visible.midX - size.width / 2
         let y = visible.midY - size.height / 2 + visible.height * 0.08
         panel.setFrameOrigin(NSPoint(x: x, y: y))
-    }
-
-    // Auto-dismiss when the panel loses focus.
-    func windowDidResignKey(_ notification: Notification) {
-        hide()
     }
 }
