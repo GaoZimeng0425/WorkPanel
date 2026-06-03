@@ -13,6 +13,9 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.mcpEnabled) private var mcpEnabled = false
     @AppStorage(AppSettings.Key.mcpPort) private var mcpPort = 8787
     @State private var mcpToken = AppSettings.mcpToken
+    @AppStorage(AppSettings.Key.aiBaseURL) private var aiBaseURL = ""
+    @AppStorage(AppSettings.Key.aiModel) private var aiModel = ""
+    @AppStorage(AppSettings.Key.aiAPIKey) private var aiAPIKey = ""
 
     private let leadOptions = [0, 5, 15, 30]
 
@@ -158,6 +161,33 @@ struct SettingsView: View {
                         Button("复制 JSON") { copy(mcpJSONConfig, notice: "已复制 JSON 配置") }
                             .buttonStyle(NoirPillButtonStyle())
                     }
+                }
+            }
+
+            section("AI 助手", systemImage: "sparkles") {
+                row("接口地址", systemImage: "link") {
+                    TextField("https://api.openai.com/v1", text: $aiBaseURL)
+                        .labelsHidden().frame(width: 220)
+                        .multilineTextAlignment(.trailing)
+                }
+                divider
+                row("模型名称", systemImage: "cpu") {
+                    TextField("gpt-4o-mini", text: $aiModel)
+                        .labelsHidden().frame(width: 220)
+                        .multilineTextAlignment(.trailing)
+                }
+                divider
+                row("API Key", systemImage: "key") {
+                    SecureField("sk-…", text: $aiAPIKey)
+                        .labelsHidden().frame(width: 220)
+                        .multilineTextAlignment(.trailing)
+                }
+                divider
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("提示词", systemImage: "text.bubble")
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(Theme.textPrimary)
+                    AIPromptListView()
                 }
             }
 
