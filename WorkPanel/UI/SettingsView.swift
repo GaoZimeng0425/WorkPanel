@@ -17,7 +17,33 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.aiModel) private var aiModel = ""
     @AppStorage(AppSettings.Key.aiAPIKey) private var aiAPIKey = ""
 
+    @State private var selectedTab: SettingsTab = .shortcuts
+
     private let leadOptions = [0, 5, 15, 30]
+
+    /// 左侧 tab。rawValue 仅作 Identifiable 用,不持久化。
+    private enum SettingsTab: String, CaseIterable, Identifiable {
+        case shortcuts, general, reminder, mcp, ai
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .shortcuts: "快捷键"
+            case .general:   "通用"
+            case .reminder:  "提醒"
+            case .mcp:       "AI 接入"
+            case .ai:        "AI 助手"
+            }
+        }
+        var icon: String {
+            switch self {
+            case .shortcuts: "command"
+            case .general:   "slider.horizontal.3"
+            case .reminder:  "bell"
+            case .mcp:       "network"
+            case .ai:        "sparkles"
+            }
+        }
+    }
 
     private var mcpURL: String { "http://127.0.0.1:\(mcpPort)/mcp" }
 
@@ -50,18 +76,111 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        HStack(spacing: 0) {
+            sidebar
+            Rectangle().fill(Theme.stroke).frame(width: 1)
+            rightPane
+        }
+        .frame(width: 640, height: 480)
+        .background(
+            LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
+                           startPoint: .top, endPoint: .bottom)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.panelRadius))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.panelRadius, style: .continuous)
+                .stroke(Theme.stroke, lineWidth: 1)
+        )
+        .preferredColorScheme(.dark)
+        .onKeyPress(.escape) { onClose(); return .handled }
+    }
+
+    // MARK: - 左右分栏
+
+    /// 左侧:标题 + 竖向 tab 列表。
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 9) {
                 Image(systemName: "gearshape.fill")
-                    .font(.title2)
+                    .font(.title3)
                     .foregroundStyle(Theme.accentText)
                 Text("设置")
-                    .font(.title2.weight(.bold))
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(Theme.textPrimary)
-                Spacer()
             }
+            .padding(.horizontal, 10)
+            .padding(.bottom, 12)
 
-            section("快捷键", systemImage: "command") {
+            ForEach(SettingsTab.allCases) { tab in
+                tabButton(tab)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 18)
+        .frame(width: 172)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Theme.surfaceSubtle)
+    }
+
+    private func tabButton(_ tab: SettingsTab) -> some View {
+        let selected = selectedTab == tab
+        return Button { selectedTab = tab } label: {
+            HStack(spacing: 9) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 13))
+                    .frame(width: 18)
+                Text(tab.label)
+                    .font(.system(size: 13, weight: .medium))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(selected ? Theme.textPrimary : Theme.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(selected ? Theme.surface : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 右侧:当前 tab 内容 + 底部「完成」。
+    private var rightPane: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                content(for: selectedTab)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+            }
+            HStack {
+                Spacer()
+                Button("完成") { onClose() }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(NoirPillButtonStyle(prominent: true))
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func content(for tab: SettingsTab) -> some View {
+        switch tab {
+        case .shortcuts: shortcutsSection
+        case .general:   generalSection
+        case .reminder:  reminderSection
+        case .mcp:       mcpSection
+        case .ai:        aiSection
+        }
+    }
+
+    // MARK: - 各 tab 内容
+
+    private var shortcutsSection: some View {
+        section("快捷键", systemImage: "command") {
                 row("捕获面板", systemImage: "square.and.pencil") {
                     KeyboardShortcuts.Recorder("", name: .toggleCapture)
                 }
@@ -74,8 +193,10 @@ struct SettingsView: View {
                     Text("⌘,").font(.callout).foregroundStyle(Theme.textSecondary)
                 }
             }
+    }
 
-            section("通用", systemImage: "slider.horizontal.3") {
+    private var generalSection: some View {
+        section("通用", systemImage: "slider.horizontal.3") {
                 row("开机自启动", systemImage: "power") {
                     Toggle("", isOn: $launchAtLogin)
                         .labelsHidden()
@@ -107,8 +228,10 @@ struct SettingsView: View {
                     .fixedSize()
                 }
             }
+    }
 
-            section("提醒", systemImage: "bell") {
+    private var reminderSection: some View {
+        section("提醒", systemImage: "bell") {
                 row("提前提醒", systemImage: "clock") {
                     Picker("", selection: $leadMinutes) {
                         ForEach(leadOptions, id: \.self) { m in
@@ -123,8 +246,10 @@ struct SettingsView: View {
                     Toggle("", isOn: $sound).labelsHidden().toggleStyle(.switch)
                 }
             }
+    }
 
-            section("AI 接入 (MCP)", systemImage: "sparkles") {
+    private var mcpSection: some View {
+        section("AI 接入 (MCP)", systemImage: "sparkles") {
                 row("启用本地服务", systemImage: "network") {
                     Toggle("", isOn: $mcpEnabled)
                         .labelsHidden().toggleStyle(.switch)
@@ -163,8 +288,10 @@ struct SettingsView: View {
                     }
                 }
             }
+    }
 
-            section("AI 助手", systemImage: "sparkles") {
+    private var aiSection: some View {
+        section("AI 助手", systemImage: "sparkles") {
                 row("接口地址", systemImage: "link") {
                     TextField("https://api.openai.com/v1", text: $aiBaseURL)
                         .labelsHidden().frame(width: 220)
@@ -190,27 +317,6 @@ struct SettingsView: View {
                     AIPromptListView()
                 }
             }
-
-            HStack {
-                Spacer()
-                Button("完成") { onClose() }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(NoirPillButtonStyle(prominent: true))
-            }
-        }
-        .padding(24)
-        .frame(width: 460)
-        .background(
-            LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
-                           startPoint: .top, endPoint: .bottom)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: Theme.panelRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.panelRadius, style: .continuous)
-                .stroke(Theme.stroke, lineWidth: 1)
-        )
-        .preferredColorScheme(.dark)
-        .onKeyPress(.escape) { onClose(); return .handled }
     }
 
     // MARK: - 分组卡片与行
