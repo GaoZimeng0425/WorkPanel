@@ -90,26 +90,20 @@ final class BoardPanelController: NSObject {
         let width = visible.width - margin * 2
         let final = NSRect(x: visible.minX + margin, y: visible.minY + margin,
                            width: width, height: currentHeight)
-        panel.contentView = makeContent(content(), size: final.size)
-        let start = final.offsetBy(dx: 0, dy: -(currentHeight + margin))
-        // 先在屏内 final 处 orderFront 并强制绘制,让透明无边框窗口完成一次屏上合成;否则从屏幕下方
-        // 滑入时窗口内容在滑动期间不会被合成到屏幕(frame 在动却看不到内容)。随后同一周期瞬移到起点
-        // (屏幕只会呈现起点,不闪现 final),不调用 NSApp.activate 以免抢占当前 App。
+        let (container, hosting) = makeContent(content(), size: final.size)
         panel.setFrame(final, display: false)
+        panel.contentView = container
+        // 窗口直接定位在最终位置:始终在屏内,内容必被合成。看板内容在窗内从底部升起,
+        // 规避“透明无边框窗口从屏外滑入时内容不被合成 → 看不到动画”的问题。
+        // 不调用 NSApp.activate:浮层出现不抢占当前 App 的 active 状态。
         panel.makeKeyAndOrderFront(nil)
-        panel.displayIfNeeded()
-        panel.setFrame(start, display: false)
         LogService.debug("show currentHeight=\(currentHeight)", category: "Board")
-        // 推迟一帧:确保窗口已在 start 完成首帧显示后再做位移动画(同一周期内 orderFront+动画不插值)。
-        DispatchQueue.main.async { [weak self] in
-            MainActor.assumeIsolated {
-                guard let panel = self?.panel else { return }
-                NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = 0.28          // 固定时长,各高度一致
-                    ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                    panel.animator().setFrame(final, display: true)
-                }
-            }
+        // 内容起点:整块在窗口下沿之下(窗口只显示自身 frame,下方部分不可见),再上滑到位。
+        hosting.setFrameOrigin(NSPoint(x: 0, y: -final.size.height))
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.28          // 固定时长,各高度一致
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            hosting.animator().setFrameOrigin(.zero)
         }
     }
 
@@ -127,12 +121,13 @@ final class BoardPanelController: NSObject {
         if isVisible { hide() } else { show(content) }
     }
 
-    /// 容器:SwiftUI 内容铺满,顶部叠一条透明的 AppKit 拉伸把手。
-    private func makeContent<Content: View>(_ root: Content, size: NSSize) -> NSView {
+    /// 容器:SwiftUI 内容铺满(出现时从底部上滑),顶部叠一条透明的 AppKit 拉伸把手。
+    /// 返回 hosting 以便 show() 驱动“内容在窗内上滑”的出现动画。
+    private func makeContent<Content: View>(_ root: Content, size: NSSize) -> (container: NSView, hosting: NSView) {
         let container = NSView(frame: NSRect(origin: .zero, size: size))
 
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = container.bounds
+        hosting.frame = NSRect(origin: .zero, size: size)
         hosting.autoresizingMask = [.width, .height]
         container.addSubview(hosting)
 
@@ -144,7 +139,7 @@ final class BoardPanelController: NSObject {
         handle.onEnd = { [weak self] in self?.resizeEnded() }
         container.addSubview(handle)
 
-        return container
+        return (container, hosting)
     }
 
     /// 拖拽开始:记录起点高度与屏幕光标 y。
