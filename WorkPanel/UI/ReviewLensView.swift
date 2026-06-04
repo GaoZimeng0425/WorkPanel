@@ -11,7 +11,6 @@ struct ReviewLensView: View {
 
     @State private var aiSummary: String = ""
     @State private var aiLoading = false
-    @State private var aiPromptID: UUID?
     private let ai = AIService()
 
     private var calendar: Calendar { .current }
@@ -81,7 +80,7 @@ struct ReviewLensView: View {
                         .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                 }
             }
-            .frame(maxWidth: 560).frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: 560).frame(maxWidth: .infinity)
             .padding(16)
         }
         .scrollEdgeFade()
@@ -95,25 +94,17 @@ struct ReviewLensView: View {
     private var aiSection: some View {
         if AppSettings.aiConfigured, !reviewPrompts.isEmpty {
             section("AI 总结") {
+                // 每个复盘提示词一个直接可点的按钮(单个 → 一个按钮,多个 → 并排多个),点击即流式生成。
                 HStack(spacing: 8) {
-                    Picker("", selection: Binding(
-                        get: { aiPromptID ?? reviewPrompts.first?.id },
-                        set: { aiPromptID = $0 }
-                    )) {
-                        ForEach(reviewPrompts) { p in
-                            Text(p.name).tag(Optional(p.id))
-                        }
+                    ForEach(reviewPrompts) { p in
+                        Button(p.name) { generate(p) }
+                            .buttonStyle(NoirPillButtonStyle(prominent: true))
+                            .disabled(aiLoading)
                     }
-                    .labelsHidden().fixedSize()
-
-                    Button(aiLoading ? "生成中…" : "生成总结") { generate() }
-                        .buttonStyle(NoirPillButtonStyle(prominent: true))
-                        .disabled(aiLoading)
+                    if aiLoading { ProgressView().controlSize(.small) }
                     Spacer()
                 }
-                if aiLoading {
-                    ProgressView().padding(.top, 4)
-                } else if !aiSummary.isEmpty {
+                if !aiSummary.isEmpty {
                     MarkdownPreview(text: $aiSummary)
                         .padding(.top, 4)
                 }
@@ -121,16 +112,15 @@ struct ReviewLensView: View {
         }
     }
 
-    private func generate() {
-        let prompts = reviewPrompts
-        guard let prompt = prompts.first(where: { $0.id == aiPromptID }) ?? prompts.first
-        else { return }
+    private func generate(_ prompt: AIPrompt) {
         aiLoading = true
+        aiSummary = ""
         Task {
             do {
-                let text = try await ai.run(systemPrompt: prompt.template,
-                                            userContext: AIContext.renderInProgress(tasks))
-                aiSummary = text
+                for try await delta in ai.stream(systemPrompt: prompt.template,
+                                                 userContext: AIContext.renderInProgress(tasks)) {
+                    aiSummary += delta
+                }
                 aiLoading = false
             } catch {
                 aiLoading = false
@@ -141,11 +131,15 @@ struct ReviewLensView: View {
 
     @ViewBuilder
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             Text(title)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(Theme.textPrimary)
-            content()
+            VStack(alignment: .leading, spacing: 8) { content() }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 11)
+                .noirCard()
         }
     }
 }

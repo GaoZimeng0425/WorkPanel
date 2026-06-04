@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1CF7FBACD7CD49CA9AF50505 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = F7A1B9D182324ABBA76DB7F4 /* KeyboardShortcuts */; };
+		4584B2092FD1826B006F93D1 /* MarkdownEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 4584B2082FD1826B006F93D1 /* MarkdownEngine */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1CF7FBACD7CD49CA9AF50505 /* KeyboardShortcuts in Frameworks */,
+				4584B2092FD1826B006F93D1 /* MarkdownEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,12 +79,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		452D5BF32FD1821400DEBB24 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		45B87AE62FC9B66200CDC1D7 = {
 			isa = PBXGroup;
 			children = (
 				45B87AF12FC9B66300CDC1D7 /* WorkPanel */,
 				45B87B012FC9B66500CDC1D7 /* WorkPanelTests */,
 				45B87B0B2FC9B66500CDC1D7 /* WorkPanelUITests */,
+				452D5BF32FD1821400DEBB24 /* Frameworks */,
 				45B87AF02FC9B66200CDC1D7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -118,6 +128,7 @@
 			name = WorkPanel;
 			packageProductDependencies = (
 				F7A1B9D182324ABBA76DB7F4 /* KeyboardShortcuts */,
+				4584B2082FD1826B006F93D1 /* MarkdownEngine */,
 			);
 			productName = WorkPanel;
 			productReference = 45B87AEF2FC9B66200CDC1D7 /* WorkPanel.app */;
@@ -203,6 +214,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				17DF481A325C4484BC43CA99 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				452D5BF22FD17E5A00DEBB24 /* XCRemoteSwiftPackageReference "swift-markdown-engine" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 45B87AF02FC9B66200CDC1D7 /* Products */;
@@ -594,9 +606,22 @@
 				minimumVersion = 2.0.0;
 			};
 		};
+		452D5BF22FD17E5A00DEBB24 /* XCRemoteSwiftPackageReference "swift-markdown-engine" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nodes-app/swift-markdown-engine";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4584B2082FD1826B006F93D1 /* MarkdownEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 452D5BF22FD17E5A00DEBB24 /* XCRemoteSwiftPackageReference "swift-markdown-engine" */;
+			productName = MarkdownEngine;
+		};
 		F7A1B9D182324ABBA76DB7F4 /* KeyboardShortcuts */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 17DF481A325C4484BC43CA99 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;

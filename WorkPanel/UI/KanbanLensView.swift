@@ -18,7 +18,7 @@ struct KanbanLensView: View {
     private var todoStore: TodoStore { TodoStore(context: context) }
     private let scheduler = ReminderScheduler()
 
-    private let columnWidth: CGFloat = 220
+    private let columnWidth: CGFloat = 260
 
     private var validIDs: Set<UUID> { Set(columns.map(\.id)) }
 

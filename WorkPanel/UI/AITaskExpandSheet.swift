@@ -11,6 +11,7 @@ struct AITaskExpandSheet: View {
     @State private var result: String = ""
     @State private var loading = true
     @State private var failed = false
+    @State private var errorMessage = ""
     @State private var runTask: Task<Void, Never>?
 
     @State private var ai = AIService()
@@ -26,17 +27,32 @@ struct AITaskExpandSheet: View {
             }
 
             Group {
-                if loading {
-                    HStack { Spacer(); ProgressView(); Spacer() }
-                        .frame(maxHeight: .infinity)
-                } else if failed {
-                    HStack { Spacer()
+                if failed {
+                    VStack(spacing: 12) {
+                        Spacer()
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(Theme.priority(.high))
+                        ScrollView {
+                            Text(errorMessage.isEmpty ? "生成失败" : errorMessage)
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity)
+                                .padding(.horizontal, 16)
+                        }
                         Button("重试") { run() }
                             .buttonStyle(NoirPillButtonStyle())
-                        Spacer() }
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
+                } else if result.isEmpty {
+                    // 尚未收到首个增量:转圈等待
+                    HStack { Spacer(); ProgressView(); Spacer() }
                         .frame(maxHeight: .infinity)
                 } else {
-                    // 绑定到 result:用户可在应用前直接勾选/编辑预览内容
+                    // 流式追加到 result,实时渲染;绑定使用户可在应用前直接勾选/编辑
                     ScrollView { MarkdownPreview(text: $result).padding(8) }
                 }
             }
@@ -80,17 +96,22 @@ struct AITaskExpandSheet: View {
         runTask?.cancel()
         loading = true
         failed = false
+        errorMessage = ""
+        result = ""
         runTask = Task {
             do {
-                let text = try await ai.run(systemPrompt: prompt.template, userContext: taskContext)
-                guard !Task.isCancelled else { return }
-                result = text
+                for try await delta in ai.stream(systemPrompt: prompt.template, userContext: taskContext) {
+                    if Task.isCancelled { return }
+                    result += delta
+                }
+                if Task.isCancelled { return }
                 loading = false
+                if result.isEmpty { failed = true; errorMessage = "模型没有返回内容" }
             } catch {
-                guard !Task.isCancelled else { return }
+                if Task.isCancelled { return }
                 loading = false
                 failed = true
-                Notice.show(AIService.message(for: error))
+                errorMessage = AIService.message(for: error)
             }
         }
     }

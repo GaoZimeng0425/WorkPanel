@@ -54,4 +54,23 @@ struct AIRequestTests {
             _ = try AIRequest.parse(data: json)
         }
     }
+
+    @Test func buildWithStreamFlagSetsStreamTrue() throws {
+        let req = try AIRequest.build(config: config, system: "S", user: "U", stream: true)
+        let body = try JSONSerialization.jsonObject(with: req.httpBody ?? Data()) as? [String: Any]
+        #expect(body?["stream"] as? Bool == true)
+    }
+
+    @Test func parseStreamLineExtractsDelta() {
+        let line = #"data: {"choices":[{"delta":{"content":"Hel"}}]}"#
+        #expect(AIRequest.parseStreamLine(line) == "Hel")
+    }
+
+    @Test func parseStreamLineIgnoresDoneAndNonData() {
+        #expect(AIRequest.parseStreamLine("data: [DONE]") == nil)
+        #expect(AIRequest.parseStreamLine("") == nil)
+        #expect(AIRequest.parseStreamLine(": keep-alive comment") == nil)
+        // 角色起始块没有 content 字段
+        #expect(AIRequest.parseStreamLine(#"data: {"choices":[{"delta":{"role":"assistant"}}]}"#) == nil)
+    }
 }

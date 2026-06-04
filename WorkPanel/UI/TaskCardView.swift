@@ -10,8 +10,8 @@ struct TaskCardView<Trailing: View>: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Button(action: onComplete) {
-                Image(systemName: "circle")
-                    .foregroundStyle(Theme.textTertiary)
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(task.isCompleted ? Theme.success : Theme.textTertiary)
                     .frame(width: 18, height: 18)
                     .contentShape(Circle())
             }
@@ -24,7 +24,8 @@ struct TaskCardView<Trailing: View>: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
                     .font(.system(size: Theme.titleFontSize))
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(task.isCompleted ? Theme.textSecondary : Theme.textPrimary)
+                    .strikethrough(task.isCompleted)
                     .lineLimit(2)
 
                 HStack(spacing: 6) {

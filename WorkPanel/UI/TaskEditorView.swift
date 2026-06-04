@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import MarkdownEngine
 
 /// 创建 / 编辑任务的统一编辑器:单个 markdown 文本域,第一行为标题,其余为备注。
 /// 第一行可用自然语言 token(如「明天 !高 #工作」)设置截止/优先级/标签/重复;
@@ -19,12 +20,12 @@ struct TaskEditorView: View {
     private let scheduler = ReminderScheduler()
 
     @State private var text: String
-    @State private var previewing = false
     @State private var priority: Priority
     @State private var selectedTags: [String]
     @State private var columnID: UUID?
     @State private var showingStatusPicker = false
     @State private var showingDatePicker = false
+    @State private var showingExpandMenu = false
     @State private var deadline: Date?
     @State private var expandPrompt: AIPrompt?
     private let base: ParsedInput
@@ -83,38 +84,36 @@ struct TaskEditorView: View {
                 Spacer()
                 if AppSettings.aiConfigured {
                     let singleTaskPrompts = AIPromptStore.load().filter { $0.shape == .singleTask }
-                    if !singleTaskPrompts.isEmpty {
-                        Menu {
-                            ForEach(singleTaskPrompts) { p in
-                                Button(p.name) { expandPrompt = p }
+                    let titleEmpty = resolved.fields.title.trimmingCharacters(in: .whitespaces).isEmpty
+                    if singleTaskPrompts.count == 1, let only = singleTaskPrompts.first {
+                        // 单个提示词:直接按钮,点击即触发,不再套一层 Menu。
+                        Button { expandPrompt = only } label: { sparklesIcon }
+                            .buttonStyle(.plain)
+                            .disabled(titleEmpty)
+                    } else if !singleTaskPrompts.isEmpty {
+                        // 多个提示词:noir 风格 popover(与状态/标签选择一致),不用原生 Menu。
+                        Button { showingExpandMenu = true } label: { sparklesIcon }
+                            .buttonStyle(.plain)
+                            .disabled(titleEmpty)
+                            .popover(isPresented: $showingExpandMenu, arrowEdge: .bottom) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    ForEach(singleTaskPrompts) { p in
+                                        expandPromptRow(p.name) { expandPrompt = p }
+                                    }
+                                }
+                                .padding(8)
+                                .frame(width: 180)
+                                .background(Theme.panelBottom)
+                                .preferredColorScheme(.dark)
                             }
-                        } label: {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Theme.accentText)
-                        }
-                        .menuStyle(.borderlessButton)
-                        .fixedSize()
-                        .disabled(resolved.fields.title.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                 }
-                NoirSegmented(
-                    segments: [.init(value: false, label: "编辑"),
-                               .init(value: true, label: "预览")],
-                    selection: $previewing
-                )
-                .fixedSize()
             }
 
             TokenStrip(fields: resolved.fields)
 
-            Group {
-                if previewing {
-                    ScrollView { MarkdownPreview(text: $text).padding(8) }
-                } else {
-                    MarkdownTextEditor(text: $text, onSave: save, onCancel: onClose)
-                }
-            }
+            // 编辑即样式:所见即所得,无编辑/预览切换。
+            NativeTextViewWrapper(text: $text, configuration: markdownConfig, fontSize: 13)
             .frame(height: 220)
             .background(
                 RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
@@ -145,8 +144,10 @@ struct TaskEditorView: View {
                 Spacer()
                 Button("取消") { onClose() }
                     .buttonStyle(NoirPillButtonStyle())
+                    .keyboardShortcut(.cancelAction)   // esc(原由编辑器内部处理,现移到按钮)
                 Button("保存") { save() }
                     .buttonStyle(NoirPillButtonStyle(prominent: true))
+                    .keyboardShortcut(.return, modifiers: .command)   // ⌘↩
                     .disabled(resolved.fields.title.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
@@ -179,6 +180,52 @@ struct TaskEditorView: View {
                 onClose: { expandPrompt = nil }
             )
         }
+    }
+
+    /// 把 noir 调色板灌进 MarkdownEngine,并收紧默认的字号/标题倍率/内边距。
+    private var markdownConfig: MarkdownEditorConfiguration {
+        // 正文白色;引擎允许独立着色的部分(标记/链接/行内代码/未勾选复选框/引用条)用橙色。
+        // 标题/加粗/项目符号文字绑在 bodyText 上,无法单独着色,故保持白色。
+        let orange = NSColor(Theme.accent)
+        var theme = MarkdownEditorTheme.default
+        theme.bodyText = NSColor(Theme.textPrimary)
+        theme.mutedText = orange
+        theme.disabledText = NSColor(Theme.textMuted)
+        theme.headingMarker = orange
+        theme.link = orange
+        theme.strikethroughColor = NSColor(Theme.textTertiary)
+
+        var config = MarkdownEditorConfiguration.default
+        config.theme = theme
+        config.textInsets = TextInsets(horizontal: 14, vertical: 12)   // 文本与卡片边缘留白
+        config.headings.fontMultipliers = [1.5, 1.3, 1.15, 1.0, 0.9, 0.8]
+        config.overscroll = OverscrollPolicy(percent: 0.1, maxPoints: 40, minPoints: 0)
+        config.lists.autoClosePairsEnabled = false   // 别把 `[` 自动补成 `[]`,方便手敲 `- [ ] `
+        config.lists.indentPerLevel = 0              // 渲染组件不加缩进,贴左边距
+        return config
+    }
+
+    private var sparklesIcon: some View {
+        Image(systemName: "sparkles")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(Theme.accentText)
+    }
+
+    private func expandPromptRow(_ title: String, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            showingExpandMenu = false
+        } label: {
+            Text(title)
+                .lineLimit(1)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 7)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var controls: some View {

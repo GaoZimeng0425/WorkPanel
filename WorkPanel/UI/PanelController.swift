@@ -15,6 +15,21 @@ final class PanelController {
         // 不调用 NSApp.activate:捕获面板作为浮层出现,不抢占当前 App 的 active 状态。
         // nonactivatingPanel + canBecomeKey 仍能成为 key 并接收文本输入(与 BoardPanelController 一致)。
         panel.makeKeyAndOrderFront(nil)
+        // 打开即聚焦文本域,无需先点一下。MarkdownEngine 的 NSTextView 不会自动成为第一响应者,
+        // 故在内容布局完成后主动指派(下一 runloop 时其 NSTextView 已建好)。
+        DispatchQueue.main.async { [weak panel] in
+            guard let panel, let content = panel.contentView,
+                  let textView = Self.firstTextView(in: content) else { return }
+            panel.makeFirstResponder(textView)
+        }
+    }
+
+    private static func firstTextView(in view: NSView) -> NSTextView? {
+        if let tv = view as? NSTextView { return tv }
+        for sub in view.subviews {
+            if let found = firstTextView(in: sub) { return found }
+        }
+        return nil
     }
 
     func hide() {
