@@ -16,7 +16,7 @@ struct SyncSettingsTests {
         d.set(15, forKey: AppSettings.Key.reminderLeadMinutes)
         d.set("dark", forKey: AppSettings.Key.appearance)
         d.set("sk-secret", forKey: AppSettings.Key.aiAPIKey)
-        let dto = SyncSettings.snapshot(from: d, suiteName: "SyncSettingsTests")
+        let dto = SyncSettings.snapshot(suiteName: "SyncSettingsTests")
         #expect(dto.reminderLeadMinutes == 15)
         #expect(dto.appearance == "dark")
         #expect(dto.aiAPIKey == "sk-secret")
@@ -36,7 +36,7 @@ struct SyncSettingsTests {
     @Test func excludesLastPlannedDay() {
         let d = makeDefaults()
         d.set(123.0, forKey: AppSettings.Key.lastPlannedDay)
-        let dto = SyncSettings.snapshot(from: d, suiteName: "SyncSettingsTests")
+        let dto = SyncSettings.snapshot(suiteName: "SyncSettingsTests")
         // DTO 无该字段;apply 也不会触碰它
         var fresh = SyncSettingsDTO()
         fresh.mcpPort = 1

@@ -19,13 +19,12 @@ struct SyncSettingsDTO: Codable {
 }
 
 enum SyncSettings {
-    /// suiteName が nil のときはバンドル ID でフォールバックし、標準 UserDefaults の永続ドメインを読む。
-    /// テストから独立スイートを渡すときは suiteName も明示すること。
-    static func snapshot(from d: UserDefaults = .standard,
+    /// 读取白名单设置。suiteName 为 nil 时以 Bundle ID 为后备域。
+    /// 刻意从持久化域(persistentDomain)读取,以排除仅由 registerDefaults 注册、未被用户显式设置的键。
+    static func snapshot(from defaults: UserDefaults = .standard,
                          suiteName: String? = nil) -> SyncSettingsDTO {
-        // 登録ドメイン(registerDefaults)のみのキーを除外するため、永続ドメインから読む。
         let domainName = suiteName ?? Bundle.main.bundleIdentifier ?? ""
-        let persisted = d.persistentDomain(forName: domainName) ?? [:]
+        let persisted = defaults.persistentDomain(forName: domainName) ?? [:]
 
         func obj(_ key: String) -> Any? { persisted[key] }
 
@@ -47,20 +46,26 @@ enum SyncSettings {
         return dto
     }
 
-    static func apply(_ dto: SyncSettingsDTO, to d: UserDefaults = .standard) {
+    /// 按套件名读取(测试用):自动用同一套件名读取其持久化域,避免实例与域名不一致。
+    static func snapshot(suiteName: String) -> SyncSettingsDTO {
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        return snapshot(from: defaults, suiteName: suiteName)
+    }
+
+    static func apply(_ dto: SyncSettingsDTO, to defaults: UserDefaults = .standard) {
         let K = AppSettings.Key.self
-        if let v = dto.reminderLeadMinutes { d.set(v, forKey: K.reminderLeadMinutes) }
-        if let v = dto.appearance          { d.set(v, forKey: K.appearance) }
-        if let v = dto.notificationSound   { d.set(v, forKey: K.notificationSound) }
-        if let v = dto.defaultPriority     { d.set(v, forKey: K.defaultPriority) }
-        if let v = dto.boardViewMode       { d.set(v, forKey: K.boardViewMode) }
-        if let v = dto.mcpEnabled          { d.set(v, forKey: K.mcpEnabled) }
-        if let v = dto.mcpPort             { d.set(v, forKey: K.mcpPort) }
-        if let v = dto.mcpToken            { d.set(v, forKey: K.mcpToken) }
-        if let v = dto.boardHeight         { d.set(v, forKey: K.boardHeight) }
-        if let v = dto.aiBaseURL           { d.set(v, forKey: K.aiBaseURL) }
-        if let v = dto.aiModel             { d.set(v, forKey: K.aiModel) }
-        if let v = dto.aiAPIKey            { d.set(v, forKey: K.aiAPIKey) }
-        if let v = dto.aiPrompts           { d.set(v, forKey: K.aiPrompts) }
+        if let v = dto.reminderLeadMinutes { defaults.set(v, forKey: K.reminderLeadMinutes) }
+        if let v = dto.appearance          { defaults.set(v, forKey: K.appearance) }
+        if let v = dto.notificationSound   { defaults.set(v, forKey: K.notificationSound) }
+        if let v = dto.defaultPriority     { defaults.set(v, forKey: K.defaultPriority) }
+        if let v = dto.boardViewMode       { defaults.set(v, forKey: K.boardViewMode) }
+        if let v = dto.mcpEnabled          { defaults.set(v, forKey: K.mcpEnabled) }
+        if let v = dto.mcpPort             { defaults.set(v, forKey: K.mcpPort) }
+        if let v = dto.mcpToken            { defaults.set(v, forKey: K.mcpToken) }
+        if let v = dto.boardHeight         { defaults.set(v, forKey: K.boardHeight) }
+        if let v = dto.aiBaseURL           { defaults.set(v, forKey: K.aiBaseURL) }
+        if let v = dto.aiModel             { defaults.set(v, forKey: K.aiModel) }
+        if let v = dto.aiAPIKey            { defaults.set(v, forKey: K.aiAPIKey) }
+        if let v = dto.aiPrompts           { defaults.set(v, forKey: K.aiPrompts) }
     }
 }
