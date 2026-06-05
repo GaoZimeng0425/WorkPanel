@@ -114,7 +114,7 @@ struct TaskEditorView: View {
 
             // 编辑即样式:所见即所得,无编辑/预览切换。
             NativeTextViewWrapper(text: $text, configuration: markdownConfig, fontSize: 13)
-            .frame(height: 220)
+            .frame(minHeight: 160, maxHeight: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                     .fill(Theme.surfaceSubtle)
@@ -152,7 +152,7 @@ struct TaskEditorView: View {
             }
         }
         .padding(18)
-        .frame(width: 560)
+        .frame(minWidth: 460, maxWidth: .infinity, minHeight: 460, maxHeight: .infinity)
         .background(
             LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
                            startPoint: .top, endPoint: .bottom)

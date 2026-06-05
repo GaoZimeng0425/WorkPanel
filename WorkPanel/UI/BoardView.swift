@@ -90,7 +90,7 @@ struct BoardView: View {
             .buttonStyle(NoirIconButtonStyle())
             .accessibilityLabel("设置")
             Button { onClose() } label: {
-                Image(systemName: "chevron.up")
+                Image(systemName: "chevron.down")
             }
             .buttonStyle(NoirIconButtonStyle())
             .help("收起 (esc)")

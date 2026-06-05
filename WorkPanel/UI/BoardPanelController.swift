@@ -2,8 +2,17 @@ import AppKit
 import SwiftUI
 
 /// 无边框面板默认无法成为 key window;子类放开以便接收 Esc / 文本输入。
-final class KeyablePanel: NSPanel {
+final class KeyablePanel: NSPanel, NSWindowDelegate {
     override var canBecomeKey: Bool { true }
+
+    /// 无边框 + .resizable 的面板在「实时拖边」缩放时不会自动卡在 min/maxSize 上,
+    /// 故在此显式夹取(仅对设置了 delegate=self 的可缩放面板生效)。
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        NSSize(
+            width: min(max(frameSize.width, minSize.width), maxSize.width),
+            height: min(max(frameSize.height, minSize.height), maxSize.height)
+        )
+    }
 
     /// Esc 收起。由各 Controller 注入具体动作(动画 / 隐藏)。
     /// 借面板层的 cancelOperation: 而非 SwiftUI .onKeyPress(.escape) —— 后者在无焦点元素的
