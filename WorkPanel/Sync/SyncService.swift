@@ -20,7 +20,9 @@ struct SyncReport {
 
 @MainActor
 enum SyncService {
-    static func exportData(context: ModelContext, now: Date = .now) throws -> Data {
+    static func exportData(context: ModelContext,
+                           includeSettings: Bool = true,
+                           now: Date = .now) throws -> Data {
         let tasks   = try context.fetch(FetchDescriptor<TodoTask>())
         let columns = try context.fetch(FetchDescriptor<BoardColumn>())
         let plans   = try context.fetch(FetchDescriptor<DayPlan>())
@@ -30,7 +32,7 @@ enum SyncService {
             tasks: tasks.map(SyncTaskDTO.init),
             columns: columns.map(SyncColumnDTO.init),
             dayPlans: plans.map(SyncDayPlanDTO.init),
-            settings: SyncSettings.snapshot()
+            settings: includeSettings ? SyncSettings.snapshot() : SyncSettingsDTO()
         )
         return try SyncDocument.encoder.encode(doc)
     }

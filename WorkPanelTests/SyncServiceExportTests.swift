@@ -42,4 +42,17 @@ struct SyncServiceExportTests {
             try SyncService.parse(Data("not json".utf8))
         }
     }
+
+    @Test func exportWithoutSettingsOmitsSecrets() throws {
+        let ctx = try makeContext()
+        ctx.insert(TodoTask(title: "A"))
+        try ctx.save()
+        let data = try SyncService.exportData(context: ctx, includeSettings: false)
+        let doc = try SyncService.parse(data)
+        // includeSettings:false → settings 全部字段为 nil(不读取任何偏好,线上无密钥)
+        #expect(doc.settings.aiAPIKey == nil)
+        #expect(doc.settings.mcpToken == nil)
+        #expect(doc.settings.appearance == nil)
+        #expect(doc.tasks.count == 1)
+    }
 }
