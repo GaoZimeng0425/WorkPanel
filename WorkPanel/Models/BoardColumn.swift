@@ -6,6 +6,7 @@ final class BoardColumn {
     var id: UUID
     var name: String
     var order: Int
+    var modifiedAt: Date = Date()
 
     init(name: String, order: Int) {
         self.id = UUID()
@@ -13,3 +14,5 @@ final class BoardColumn {
         self.order = order
     }
 }
+
+extension BoardColumn: @preconcurrency Timestamped {}

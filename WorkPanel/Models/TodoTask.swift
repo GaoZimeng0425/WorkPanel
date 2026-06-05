@@ -18,6 +18,7 @@ final class TodoTask {
     var boardOrder: Int
     var planOrder: Int = 0           // 开工规划页手动排序;仅 PlanningView 候选排序消费
     var urgencyOverride: Bool?
+    var modifiedAt: Date = Date()    // 跨机器同步的最新者胜判定
 
     var priority: Priority {
         get { Priority(rawValue: priorityRaw) ?? .medium }
@@ -64,3 +65,5 @@ final class TodoTask {
         self.urgencyOverride = urgencyOverride
     }
 }
+
+extension TodoTask: @preconcurrency Timestamped {}
