@@ -57,7 +57,7 @@ struct SyncDayPlanDTO: Codable {
     init(_ p: DayPlan) { day = p.day; committedTaskIDs = p.committedTaskIDs; modifiedAt = p.modifiedAt }
 
     func makeModel() -> DayPlan { let p = DayPlan(day: day); apply(to: p); return p }
-    func apply(to p: DayPlan) { p.day = day; p.committedTaskIDs = committedTaskIDs; p.modifiedAt = modifiedAt }
+    func apply(to p: DayPlan) { p.committedTaskIDs = committedTaskIDs; p.modifiedAt = modifiedAt }
 }
 
 struct SyncDocument: Codable {

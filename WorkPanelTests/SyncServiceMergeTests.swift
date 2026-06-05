@@ -102,6 +102,19 @@ struct SyncServiceMergeTests {
         #expect(report.dayPlansUpdated == 1)
     }
 
+    @Test func insertedDayPlanIsNormalizedToMidnight() throws {
+        let ctx = try makeContext()
+        let cal = Calendar(identifier: .gregorian)
+        let noon = Date(timeIntervalSince1970: 1_000_000).addingTimeInterval(12 * 3600)
+        var dto = SyncDayPlanDTO(DayPlan(day: noon, committedTaskIDs: []))
+        dto.modifiedAt = Date(timeIntervalSince1970: 10)
+        let report = try SyncService.merge(docWith(dayPlans: [dto]),
+                                           into: ctx, includeSettings: false, calendar: cal)
+        #expect(report.dayPlansInserted == 1)
+        let p = try ctx.fetch(FetchDescriptor<DayPlan>()).first
+        #expect(p?.day == cal.startOfDay(for: noon))   // 落库为当天 00:00,而非原始 12:00
+    }
+
     @Test func settingsAppliedOnlyWhenRequested() throws {
         let ctx = try makeContext()
         var settings = SyncSettingsDTO()

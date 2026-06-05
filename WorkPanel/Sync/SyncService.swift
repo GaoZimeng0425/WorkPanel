@@ -83,7 +83,9 @@ enum SyncService {
                     report.dayPlansUpdated += 1
                 }
             } else {
-                let p = dto.makeModel(); context.insert(p); plans.append(p); report.dayPlansInserted += 1
+                let p = dto.makeModel()
+                p.day = day            // 维持 DayPlan.day 归一化到 00:00 的不变量
+                context.insert(p); plans.append(p); report.dayPlansInserted += 1
             }
         }
 
