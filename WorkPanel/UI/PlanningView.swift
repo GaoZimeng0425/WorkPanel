@@ -45,15 +45,19 @@ struct PlanningView: View {
             Rectangle().fill(Theme.stroke).frame(height: 1)
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(Array(candidates.enumerated()), id: \.element.id) { index, task in
+                    ForEach(candidates) { task in
                         row(task)
                             .draggable(task.id.uuidString)
-                            .deferredDrop { dropReorder($0, before: index) }
+                            .reorderRow(id: task.id, in: "planning")
                     }
                 }
-                .deferredDrop { dropReorder($0, before: candidates.count) }
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 .padding(12)
+                .reorderContainer(space: "planning", order: candidates.map(\.id)) { payload, index in
+                    guard let id = UUID(uuidString: payload) else { return }
+                    store.reorderPlan(candidates.map(\.id), move: id, before: index)
+                    try? context.saveTracking()
+                }
             }
             .scrollEdgeFade()
         }
@@ -69,12 +73,6 @@ struct PlanningView: View {
         lastPlannedDay = now.timeIntervalSinceReferenceDate
         try? context.saveTracking()
         onDone()
-    }
-
-    private func dropReorder(_ payload: String, before index: Int) {
-        guard let id = UUID(uuidString: payload) else { return }
-        store.reorderPlan(candidates.map(\.id), move: id, before: index)
-        try? context.saveTracking()
     }
 
     private var header: some View {

@@ -103,9 +103,9 @@ struct KanbanLensView: View {
                     if items.isEmpty {
                         emptyColumnText("拖入任务或点下方添加")
                     } else {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, task in
+                        ForEach(items) { task in
                             LensCard(task: task, draggable: true)
-                                .deferredDrop { handleDrop($0, into: column.id, at: index) }
+                                .reorderRow(id: task.id, in: column.id)
                         }
                     }
 
@@ -130,7 +130,9 @@ struct KanbanLensView: View {
         .frame(width: columnWidth)
         .frame(maxHeight: .infinity, alignment: .top)
         .noirColumn()
-        .deferredDrop { handleDrop($0, into: column.id, at: items.count) }
+        .reorderContainer(space: column.id, order: items.map(\.id)) { payload, index in
+            handleDrop(payload, into: column.id, at: index)
+        }
     }
 
     private var archiveColumnView: some View {
