@@ -40,7 +40,10 @@ struct TodayLensView: View {
                             .buttonStyle(NoirPillButtonStyle())
                     }
                     .padding(.horizontal, 4)
-                    ForEach(committed) { LensCard(task: $0) }
+                    ForEach(Array(committed.enumerated()), id: \.element.id) { index, task in
+                        LensCard(task: task, draggable: true)
+                            .deferredDrop { dropReorder($0, before: index) }
+                    }
                     if dueNotCommittedCount > 0 {
                         Text("另有 \(dueNotCommittedCount) 件今天到期未纳入")
                             .font(.system(size: 11))
@@ -49,10 +52,17 @@ struct TodayLensView: View {
                     }
                 }
             }
+            .deferredDrop { dropReorder($0, before: committed.count) }
             .frame(maxWidth: 560).frame(maxWidth: .infinity)
             .padding(12)
         }
         .scrollEdgeFade()
+    }
+
+    private func dropReorder(_ payload: String, before index: Int) {
+        guard let id = UUID(uuidString: payload) else { return }
+        store.reorder(id, to: index, on: now)
+        try? context.save()
     }
 
     private var emptyState: some View {
