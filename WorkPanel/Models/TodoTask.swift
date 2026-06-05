@@ -16,6 +16,7 @@ final class TodoTask {
     var recurrenceRaw: String?
     var columnID: UUID?
     var boardOrder: Int
+    var planOrder: Int = 0           // 开工规划页手动排序;仅 PlanningView 候选排序消费
     var urgencyOverride: Bool?
 
     var priority: Priority {
