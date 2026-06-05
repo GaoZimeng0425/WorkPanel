@@ -94,4 +94,14 @@ struct PlanStoreTests {
         store.toggle(t, on: day)                         // 只有今天的 plan,无更早的
         #expect(store.carryOverCandidates(before: day).isEmpty)
     }
+
+    @Test func reorderMovesCommittedTask() throws {
+        let context = try makeContext()
+        let store = PlanStore(context: context, calendar: calendar)
+        let t1 = TodoTask(title: "一"), t2 = TodoTask(title: "二"), t3 = TodoTask(title: "三")
+        [t1, t2, t3].forEach { context.insert($0); store.toggle($0, on: day) }
+        // 初始承诺顺序 [t1, t2, t3];把 t3 移到最前(index 0)
+        store.reorder(t3.id, to: 0, on: day)
+        #expect(store.committedTasks(on: day).map(\.id) == [t3.id, t1.id, t2.id])
+    }
 }

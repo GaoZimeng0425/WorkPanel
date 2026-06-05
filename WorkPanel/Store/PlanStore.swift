@@ -40,6 +40,12 @@ final class PlanStore {
         }
     }
 
+    /// 重排 day 当天承诺任务的顺序:把 id 移到「第 index 个之前」(容器追加传 index == 数量)。
+    func reorder(_ id: UUID, to index: Int, on day: Date) {
+        let p = ensurePlan(on: day)
+        p.committedTaskIDs = reorderInsertingBefore(p.committedTaskIDs, move: id, before: index)
+    }
+
     /// day 当天承诺的任务(按承诺顺序;已删除的 ID 跳过)。
     func committedTasks(on day: Date) -> [TodoTask] {
         guard let p = plan(on: day) else { return [] }
