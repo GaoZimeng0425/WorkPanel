@@ -71,15 +71,15 @@ struct SyncDocument: Codable {
     var dayPlans: [SyncDayPlanDTO]
     var settings: SyncSettingsDTO
 
-    static var encoder: JSONEncoder {
+    nonisolated(unsafe) static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
         e.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return e
-    }
-    static var decoder: JSONDecoder {
+    }()
+    nonisolated(unsafe) static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.dateDecodingStrategy = .iso8601
         return d
-    }
+    }()
 }

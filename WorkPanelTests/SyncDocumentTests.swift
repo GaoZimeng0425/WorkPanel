@@ -6,7 +6,8 @@ import Foundation
 struct SyncDocumentTests {
     @Test func taskDTORoundTripsAllFields() throws {
         let t = TodoTask(title: "标题", notes: "备注", priority: .high,
-                         tags: ["x", "y"], recurrence: .weekly)
+                         tags: ["x", "y"], recurrence: .weekly,
+                         createdAt: Date(timeIntervalSince1970: 50))
         t.deadline = Date(timeIntervalSince1970: 100)
         t.isCompleted = true
         t.completedAt = Date(timeIntervalSince1970: 200)
@@ -33,6 +34,7 @@ struct SyncDocumentTests {
         #expect(back.planOrder == 7)
         #expect(back.urgencyOverride == true)
         #expect(back.modifiedAt == Date(timeIntervalSince1970: 400))
+        #expect(back.createdAt == Date(timeIntervalSince1970: 50))
     }
 
     @Test func nilOptionalsRoundTrip() throws {
@@ -45,5 +47,29 @@ struct SyncDocumentTests {
         #expect(back.recurrenceRaw == nil)
         #expect(back.urgencyOverride == nil)
         #expect(back.columnID == nil)
+    }
+
+    @Test func columnDTORoundTrips() throws {
+        let c = BoardColumn(name: "开发中", order: 2)
+        c.modifiedAt = Date(timeIntervalSince1970: 111)
+        let dto = SyncColumnDTO(c)
+        let back = try SyncDocument.decoder.decode(
+            SyncColumnDTO.self, from: try SyncDocument.encoder.encode(dto))
+        #expect(back.id == c.id)
+        #expect(back.name == "开发中")
+        #expect(back.order == 2)
+        #expect(back.modifiedAt == Date(timeIntervalSince1970: 111))
+    }
+
+    @Test func dayPlanDTORoundTrips() throws {
+        let ids = [UUID(), UUID()]
+        let p = DayPlan(day: Date(timeIntervalSince1970: 86400), committedTaskIDs: ids)
+        p.modifiedAt = Date(timeIntervalSince1970: 222)
+        let dto = SyncDayPlanDTO(p)
+        let back = try SyncDocument.decoder.decode(
+            SyncDayPlanDTO.self, from: try SyncDocument.encoder.encode(dto))
+        #expect(back.day == Date(timeIntervalSince1970: 86400))
+        #expect(back.committedTaskIDs == ids)
+        #expect(back.modifiedAt == Date(timeIntervalSince1970: 222))
     }
 }
