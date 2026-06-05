@@ -47,11 +47,11 @@ enum SyncService {
     /// 按 ID 合并(DayPlan 按归一化 day),最新者胜。刻意用普通 save() 以保留文件时间戳。
     @discardableResult
     static func merge(_ doc: SyncDocument, into context: ModelContext,
-                      includeSettings: Bool, calendar: Calendar = .current) -> SyncReport {
+                      includeSettings: Bool, calendar: Calendar = .current) throws -> SyncReport {
         var report = SyncReport()
 
         // 列(先于任务,使 columnID 引用可解析)
-        let cols = (try? context.fetch(FetchDescriptor<BoardColumn>())) ?? []
+        let cols = try context.fetch(FetchDescriptor<BoardColumn>())
         var colByID = Dictionary(uniqueKeysWithValues: cols.map { ($0.id, $0) })
         for dto in doc.columns {
             if let local = colByID[dto.id] {
@@ -62,7 +62,7 @@ enum SyncService {
         }
 
         // 任务
-        let tasks = (try? context.fetch(FetchDescriptor<TodoTask>())) ?? []
+        let tasks = try context.fetch(FetchDescriptor<TodoTask>())
         var taskByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
         for dto in doc.tasks {
             if let local = taskByID[dto.id] {
@@ -73,13 +73,13 @@ enum SyncService {
         }
 
         // 日计划(按 day 匹配)
-        var plans = (try? context.fetch(FetchDescriptor<DayPlan>())) ?? []
+        var plans = try context.fetch(FetchDescriptor<DayPlan>())
+        // DayPlan 无 id,按归一化 day 线性匹配。日计划量级小(每天一条),O(n*m) 可接受。
         for dto in doc.dayPlans {
             let day = calendar.startOfDay(for: dto.day)
             if let local = plans.first(where: { calendar.isDate($0.day, inSameDayAs: day) }) {
                 if dto.modifiedAt > local.modifiedAt {
-                    local.committedTaskIDs = dto.committedTaskIDs
-                    local.modifiedAt = dto.modifiedAt
+                    dto.apply(to: local)
                     report.dayPlansUpdated += 1
                 }
             } else {
@@ -89,7 +89,7 @@ enum SyncService {
 
         if includeSettings { SyncSettings.apply(doc.settings); report.settingsApplied = true }
 
-        try? context.save()      // 普通 save:保留文件时间戳,不重新打点
+        try context.save()      // 普通 save:保留文件时间戳,不重新打点
         return report
     }
 }
