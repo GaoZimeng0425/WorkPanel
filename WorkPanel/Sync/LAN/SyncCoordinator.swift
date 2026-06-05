@@ -21,7 +21,7 @@ final class SyncCoordinator {
     private let code: String
     private let intervalSeconds: Int
     private let server: SyncPeerServer
-    private var browser: SyncPeerBrowser!
+    private var browser: SyncPeerBrowser?
     private var timer: Timer?
     private let status = LANSyncStatus.shared
 
@@ -37,13 +37,14 @@ final class SyncCoordinator {
     }
 
     func start() {
+        guard timer == nil else { return }   // 已在运行则不重复启动(防重复 timer / 泄漏 browser)
         server.start()
         browser = SyncPeerBrowser(ownInstanceID: AppSettings.syncInstanceID) { [weak self] peers in
             guard let self else { return }
             self.status.peerNames = peers.map(\.deviceName)
             self.syncAll(peers)                 // 发现变化即同步一轮
         }
-        browser.start()
+        browser?.start()
         let t = Timer.scheduledTimer(withTimeInterval: TimeInterval(intervalSeconds), repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
