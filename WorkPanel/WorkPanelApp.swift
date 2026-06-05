@@ -65,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = SettingsPanelController()
     private let scheduler = ReminderScheduler()
     private var mcpServer: MCPServer?
+    private var syncCoordinator: SyncCoordinator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
@@ -82,6 +83,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated { self?.restartMCP() }
         }
         startOrStopMCP()
+        NotificationCenter.default.addObserver(forName: .lanSyncSettingsChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restartSync() }
+        }
+        startOrStopSync()
         Task { _ = await scheduler.requestAuthorization() }
 
         if SharedModel.isUITesting {
@@ -133,5 +138,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mcpServer?.stop()
         mcpServer = nil
         startOrStopMCP()
+    }
+
+    private func startOrStopSync() {
+        if AppSettings.lanSyncEnabled {
+            let coordinator = SyncCoordinator(context: SharedModel.container.mainContext)
+            coordinator.start()
+            syncCoordinator = coordinator
+        } else {
+            syncCoordinator?.stop()
+            syncCoordinator = nil
+        }
+    }
+
+    private func restartSync() {
+        syncCoordinator?.stop()
+        syncCoordinator = nil
+        startOrStopSync()
     }
 }
