@@ -46,6 +46,15 @@ final class PlanStore {
         p.committedTaskIDs = reorderInsertingBefore(p.committedTaskIDs, move: id, before: index)
     }
 
+    /// 候选拖动重排(仅作用于规划页):按 insert-before 算出新顺序后,
+    /// 把这些任务的 planOrder 重写为 0,1,2,…。
+    func reorderPlan(_ currentOrder: [UUID], move id: UUID, before index: Int) {
+        let newOrder = reorderInsertingBefore(currentOrder, move: id, before: index)
+        let all = (try? context.fetch(FetchDescriptor<TodoTask>())) ?? []
+        let byID = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
+        for (i, tid) in newOrder.enumerated() { byID[tid]?.planOrder = i }
+    }
+
     /// day 当天承诺的任务(按承诺顺序;已删除的 ID 跳过)。
     func committedTasks(on day: Date) -> [TodoTask] {
         guard let p = plan(on: day) else { return [] }

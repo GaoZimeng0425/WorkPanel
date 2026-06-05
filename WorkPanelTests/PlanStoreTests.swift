@@ -104,4 +104,16 @@ struct PlanStoreTests {
         store.reorder(t3.id, to: 0, on: day)
         #expect(store.committedTasks(on: day).map(\.id) == [t3.id, t1.id, t2.id])
     }
+
+    @Test func reorderPlanRenumbersPlanOrder() throws {
+        let context = try makeContext()
+        let store = PlanStore(context: context, calendar: calendar)
+        let t1 = TodoTask(title: "一"), t2 = TodoTask(title: "二"), t3 = TodoTask(title: "三")
+        [t1, t2, t3].forEach { context.insert($0) }
+        // 当前候选顺序 [t1, t2, t3];把 t3 拖到最前
+        store.reorderPlan([t1.id, t2.id, t3.id], move: t3.id, before: 0)
+        #expect(t3.planOrder == 0)
+        #expect(t1.planOrder == 1)
+        #expect(t2.planOrder == 2)
+    }
 }
