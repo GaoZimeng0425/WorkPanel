@@ -21,6 +21,7 @@ struct PlanningView: View {
         return tasks
             .filter { !$0.isCompleted && ($0.snoozedUntil.map { $0 <= now } ?? true) }
             .sorted { lhs, rhs in
+                if lhs.planOrder != rhs.planOrder { return lhs.planOrder < rhs.planOrder }
                 let lc = carriedIDs.contains(lhs.id), rc = carriedIDs.contains(rhs.id)
                 if lc != rc { return lc }
                 let ls = suggested(lhs, cal: cal), rs = suggested(rhs, cal: cal)
@@ -44,8 +45,13 @@ struct PlanningView: View {
             Rectangle().fill(Theme.stroke).frame(height: 1)
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(candidates) { task in row(task) }
+                    ForEach(Array(candidates.enumerated()), id: \.element.id) { index, task in
+                        row(task)
+                            .draggable(task.id.uuidString)
+                            .deferredDrop { dropReorder($0, before: index) }
+                    }
                 }
+                .deferredDrop { dropReorder($0, before: candidates.count) }
                 .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 .padding(12)
             }
@@ -63,6 +69,12 @@ struct PlanningView: View {
         lastPlannedDay = now.timeIntervalSinceReferenceDate
         try? context.save()
         onDone()
+    }
+
+    private func dropReorder(_ payload: String, before index: Int) {
+        guard let id = UUID(uuidString: payload) else { return }
+        store.reorderPlan(candidates.map(\.id), move: id, before: index)
+        try? context.save()
     }
 
     private var header: some View {
