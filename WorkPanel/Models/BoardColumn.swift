@@ -6,7 +6,7 @@ final class BoardColumn {
     var id: UUID
     var name: String
     var order: Int
-    var modifiedAt: Date = Date()
+    var modifiedAt: Date = Date()      // 跨机器同步的最新者胜判定
 
     init(name: String, order: Int) {
         self.id = UUID()

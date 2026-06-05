@@ -7,7 +7,7 @@ import SwiftData
 final class DayPlan {
     var day: Date                  // 归一化到当天 00:00(Calendar.startOfDay)
     var committedTaskIDs: [UUID]
-    var modifiedAt: Date = Date()
+    var modifiedAt: Date = Date()      // 跨机器同步的最新者胜判定
 
     init(day: Date, committedTaskIDs: [UUID] = []) {
         self.day = day
