@@ -24,7 +24,7 @@ struct SyncClientTests {
 
     @Test func throwsOnNon200() throws {
         let resp = response(status: 401, reason: "Unauthorized", body: Data())
-        #expect(throws: SyncClient.ClientError.self) {
+        #expect(throws: SyncClient.ClientError.http(401)) {
             try SyncClient.parseResponse(resp)
         }
     }

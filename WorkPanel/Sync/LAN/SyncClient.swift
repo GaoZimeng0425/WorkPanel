@@ -7,6 +7,7 @@ enum SyncClient {
     enum ClientError: Error, Equatable {
         case malformed
         case http(Int)
+        case connectionLost
     }
 
     /// 纯函数:整段 HTTP 响应字节 → SyncDocument。状态非 200 抛 .http;无法解析抛 .malformed;
@@ -57,7 +58,8 @@ enum SyncClient {
                     case .failed(let e):
                         finish(.failure(e))
                     case .cancelled:
-                        finish(.failure(ClientError.malformed))
+                        // 连接异常中断(对端消失等)。超时路径自身的 cancel 已被 finished 守卫吞掉,不会走到这。
+                        finish(.failure(ClientError.connectionLost))
                     default:
                         break
                     }
@@ -79,6 +81,8 @@ enum SyncClient {
             MainActor.assumeIsolated {
                 var acc = buffer
                 if let data { acc.append(data) }
+                // 复用 HTTPRequest.parse 仅为判定 body 是否按 Content-Length 收齐(响应行形态兼容,
+                // 真正的状态码/解析在 parseResponse 里);服务端总会带 Content-Length,否则靠下面的 isDone 兜底。
                 if let req = HTTPRequest.parse(acc), req.isComplete {
                     finish(Result { try Self.parseResponse(acc) })
                 } else if isDone {
