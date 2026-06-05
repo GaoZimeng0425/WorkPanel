@@ -32,7 +32,7 @@ struct SyncServiceExportTests {
 
     @Test func parseRejectsUnknownSchemaVersion() throws {
         let json = #"{"schemaVersion":999,"exportedAt":"2026-01-01T00:00:00Z","tasks":[],"columns":[],"dayPlans":[],"settings":{}}"#
-        #expect(throws: SyncError.self) {
+        #expect(throws: SyncError.unsupportedVersion(999)) {
             try SyncService.parse(Data(json.utf8))
         }
     }
