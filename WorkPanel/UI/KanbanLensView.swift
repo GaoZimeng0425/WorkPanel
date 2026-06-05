@@ -52,7 +52,7 @@ struct KanbanLensView: View {
             Button("取消", role: .cancel) { renaming = nil }
             Button("确定") {
                 if let col = renaming, !renameText.trimmingCharacters(in: .whitespaces).isEmpty {
-                    store.rename(col, to: renameText); try? context.save()
+                    store.rename(col, to: renameText); try? context.saveTracking()
                 }
                 renaming = nil
             }
@@ -62,7 +62,7 @@ struct KanbanLensView: View {
             Button("取消", role: .cancel) { newColumnText = "" }
             Button("添加") {
                 let name = newColumnText.trimmingCharacters(in: .whitespaces)
-                if !name.isEmpty { store.addColumn(name: name); try? context.save() }
+                if !name.isEmpty { store.addColumn(name: name); try? context.saveTracking() }
                 newColumnText = ""
             }
         }
@@ -193,7 +193,7 @@ struct KanbanLensView: View {
                 .padding(.vertical, 4)
             columnActionRow("删除", systemImage: "trash", destructive: true, disabled: columns.count <= 1) {
                 store.delete(column)
-                try? context.save()
+                try? context.saveTracking()
             }
         }
         .padding(8)
@@ -242,13 +242,13 @@ struct KanbanLensView: View {
         guard let task = task(for: payload) else { return }
         if task.isCompleted { todoStore.reopen(task) }   // 从归档拖回
         store.move(task, to: columnID, at: index)
-        try? context.save()
+        try? context.saveTracking()
     }
 
     private func handleArchiveDrop(_ payload: String) {
         guard let task = task(for: payload), !task.isCompleted else { return }
         let next = todoStore.complete(task)
-        try? context.save()
+        try? context.saveTracking()
         scheduler.cancel(for: task)
         if let next { Task { await scheduler.schedule(for: next) } }
     }

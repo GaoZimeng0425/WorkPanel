@@ -119,7 +119,7 @@ struct TaskListView: View {
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
                 Spacer()
-                Button("恢复") { store.reopen(task); try? context.save() }
+                Button("恢复") { store.reopen(task); try? context.saveTracking() }
                     .buttonStyle(NoirPillButtonStyle())
             }
             .padding(8)
@@ -140,7 +140,7 @@ struct TaskListView: View {
                 Divider()
                 Button("删除", role: .destructive) {
                     scheduler.cancel(for: task)
-                    store.delete(task); try? context.save()
+                    store.delete(task); try? context.saveTracking()
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -178,7 +178,7 @@ struct TaskListView: View {
 
     private func complete(_ task: TodoTask) {
         let next = store.complete(task)
-        try? context.save()
+        try? context.saveTracking()
         scheduler.cancel(for: task)
         if let next {
             Task { await scheduler.schedule(for: next) }
@@ -188,7 +188,7 @@ struct TaskListView: View {
     private func snooze(_ task: TodoTask, days: Int) {
         let until = Calendar.current.date(byAdding: .day, value: days, to: .now)!
         store.snooze(task, until: until)
-        try? context.save()
+        try? context.saveTracking()
     }
 
 }

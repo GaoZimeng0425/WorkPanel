@@ -111,7 +111,7 @@ final class MCPToolHandlers {
         let notes = args["notes"]?.stringValue ?? ""
         let task = todo.add(parsed, notes: notes)
         if let targetColumn { board.setColumn(task, to: targetColumn) }
-        try context.save()
+        try context.saveTracking()
         await scheduler.schedule(for: task)
         return try encode(dto(task))
     }
@@ -127,7 +127,7 @@ final class MCPToolHandlers {
         }
         if let v = args["priority"]?.stringValue, let p = Priority(apiName: v) { task.priority = p }
         if let arr = args["tags"]?.arrayValue { task.tags = arr.compactMap(\.stringValue) }
-        try context.save()
+        try context.saveTracking()
         scheduler.cancel(for: task)
         await scheduler.schedule(for: task)
         return try encode(dto(task))
@@ -138,7 +138,7 @@ final class MCPToolHandlers {
     private func completeTask(_ args: JSONValue) async throws -> String {
         let task = try fetchTask(requireID(args))
         let next = todo.complete(task)
-        try context.save()
+        try context.saveTracking()
         scheduler.cancel(for: task)
         if let next { await scheduler.schedule(for: next) }
         return try encode(CompleteResult(task: dto(task), next: next.map(dto)))
@@ -147,7 +147,7 @@ final class MCPToolHandlers {
     private func reopenTask(_ args: JSONValue) throws -> String {
         let task = try fetchTask(requireID(args))
         todo.reopen(task)
-        try context.save()
+        try context.saveTracking()
         return try encode(dto(task))
     }
 
@@ -157,7 +157,7 @@ final class MCPToolHandlers {
         }
         let task = try fetchTask(requireID(args))
         todo.snooze(task, until: date)
-        try context.save()
+        try context.saveTracking()
         return try encode(dto(task))
     }
 
@@ -166,7 +166,7 @@ final class MCPToolHandlers {
         let task = try fetchTask(id)
         scheduler.cancel(for: task)
         todo.delete(task)
-        try context.save()
+        try context.saveTracking()
         return try encode(["deleted": id.uuidString])
     }
 
@@ -186,7 +186,7 @@ final class MCPToolHandlers {
         } else {
             throw ToolError.badArgument("Missing 'columnID'")
         }
-        try context.save()
+        try context.saveTracking()
         return try encode(dto(task))
     }
 

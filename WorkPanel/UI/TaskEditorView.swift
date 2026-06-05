@@ -382,7 +382,7 @@ struct TaskEditorView: View {
         guard case .edit(let task) = mode else { return }
         scheduler.cancel(for: task)
         context.delete(task)
-        try? context.save()
+        try? context.saveTracking()
         onClose()
     }
 
@@ -436,7 +436,7 @@ struct TaskEditorView: View {
             task = existing
         }
         boardStore.setColumn(task, to: columnID)
-        try? context.save()
+        try? context.saveTracking()
         Task { await scheduler.schedule(for: task) }
         onClose()
     }

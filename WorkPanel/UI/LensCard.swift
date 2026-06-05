@@ -22,7 +22,7 @@ struct LensCard: View {
                 Button("删除", role: .destructive) {
                     scheduler.cancel(for: task)
                     context.delete(task)
-                    try? context.save()
+                    try? context.saveTracking()
                 }
             }
             .accessibilityIdentifier("card-\(task.title)")
@@ -36,7 +36,7 @@ struct LensCard: View {
 
     private func complete() {
         let next = todoStore.complete(task)
-        try? context.save()
+        try? context.saveTracking()
         scheduler.cancel(for: task)
         if let next { Task { await scheduler.schedule(for: next) } }
     }

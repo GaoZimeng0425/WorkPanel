@@ -60,7 +60,7 @@ struct PriorityLensView: View {
             guard let id = UUID(uuidString: payload),
                   let task = tasks.first(where: { $0.id == id }) else { return }
             store.setPriority(task, to: p)
-            try? context.save()
+            try? context.saveTracking()
         }
     }
 }

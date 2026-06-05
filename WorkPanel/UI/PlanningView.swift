@@ -67,14 +67,14 @@ struct PlanningView: View {
     /// 跳过与「开始今天」都只标记 lastPlannedDay 并收起;承诺与否取决于用户是否点选过行(实时写入)。
     private func dismiss() {
         lastPlannedDay = now.timeIntervalSinceReferenceDate
-        try? context.save()
+        try? context.saveTracking()
         onDone()
     }
 
     private func dropReorder(_ payload: String, before index: Int) {
         guard let id = UUID(uuidString: payload) else { return }
         store.reorderPlan(candidates.map(\.id), move: id, before: index)
-        try? context.save()
+        try? context.saveTracking()
     }
 
     private var header: some View {
@@ -98,7 +98,7 @@ struct PlanningView: View {
         let on = store.isCommitted(task, on: now)
         return Button {
             store.toggle(task, on: now)
-            try? context.save()
+            try? context.saveTracking()
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: on ? "checkmark.circle.fill" : "circle")

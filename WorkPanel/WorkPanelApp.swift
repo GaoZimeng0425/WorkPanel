@@ -41,7 +41,7 @@ enum SharedModel {
             task.boardOrder = i
             context.insert(task)
         }
-        try? context.save()
+        try? context.saveTracking()
     }
 }
 

@@ -62,7 +62,7 @@ struct TodayLensView: View {
     private func dropReorder(_ payload: String, before index: Int) {
         guard let id = UUID(uuidString: payload) else { return }
         store.reorder(id, to: index, on: now)
-        try? context.save()
+        try? context.saveTracking()
     }
 
     private var emptyState: some View {
