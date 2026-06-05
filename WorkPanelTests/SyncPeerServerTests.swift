@@ -46,4 +46,10 @@ struct SyncPeerServerTests {
                                         code: "secret", body: { throw E() })
         #expect(status(of: resp) == 500)
     }
+    @Test func emptyConfiguredCodeRejects() {
+        // 即便请求带了空 Bearer 且与空配对码"相等",未配置 code 的服务器也必须拒绝。
+        let resp = SyncPeerServer.route(request(method: "GET", path: "/sync", code: ""),
+                                        code: "", body: { Data("{}".utf8) })
+        #expect(status(of: resp) == 401)
+    }
 }

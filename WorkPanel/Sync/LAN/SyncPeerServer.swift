@@ -25,6 +25,8 @@ final class SyncPeerServer {
     static func route(_ req: HTTPRequest, code: String, body: () throws -> Data) -> Data {
         // 注意:与 MCPServer 相反——同步是只读导出,只接受 GET(MCP 接受 POST)。
         guard req.method == "GET" else { return HTTPResponse.methodNotAllowed() }
+        // 未配置配对码时拒绝服务,避免向任意局域网设备暴露任务数据。
+        guard !code.isEmpty else { return HTTPResponse.unauthorized() }
         // 借用 MCPServer.authorized:纯字符串 Bearer 比较,无 MCPServer 状态依赖。
         guard MCPServer.authorized(req.headers, token: code) else { return HTTPResponse.unauthorized() }
         guard req.path == "/sync" else { return HTTPResponse.build(status: 404, reason: "Not Found") }
