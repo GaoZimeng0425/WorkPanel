@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
+import SwiftData
 import KeyboardShortcuts
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     let onClose: () -> Void
@@ -18,6 +20,15 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.aiAPIKey) private var aiAPIKey = ""
 
     @State private var selectedTab: SettingsTab = .shortcuts
+
+    @State private var pendingImport: PendingImport?
+    @State private var importIncludesSettings = false
+
+    /// .sheet(item:) 需要 Identifiable 包装。
+    private struct PendingImport: Identifiable {
+        let id = UUID()
+        let doc: SyncDocument
+    }
 
     private let leadOptions = [0, 5, 15, 30]
 
@@ -75,6 +86,85 @@ struct SettingsView: View {
         Notice.show(notice)
     }
 
+    private var exportFileName: String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return "WorkPanel-备份-\(f.string(from: Date())).json"
+    }
+
+    private func runExport() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = exportFileName
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let data = try SyncService.exportData(context: SharedModel.container.mainContext)
+            try data.write(to: url)
+            Notice.show("已导出")
+        } catch {
+            Notice.show("导出失败")
+        }
+    }
+
+    private func chooseImport() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let doc = try SyncService.parse(try Data(contentsOf: url))
+            importIncludesSettings = false
+            pendingImport = PendingImport(doc: doc)
+        } catch {
+            Notice.show("导入失败:文件格式无效")
+        }
+    }
+
+    private func performImport(_ doc: SyncDocument) {
+        do {
+            let report = try SyncService.merge(doc, into: SharedModel.container.mainContext,
+                                               includeSettings: importIncludesSettings)
+            if report.settingsApplied {
+                AppSettings.appearance.apply()
+                NotificationCenter.default.post(name: .mcpSettingsChanged, object: nil)
+            }
+            Notice.show("导入完成:新增 \(report.totalInserted),更新 \(report.totalUpdated)")
+        } catch {
+            Notice.show("导入失败:写入存储出错")
+        }
+    }
+
+    private func importConfirmSheet(_ doc: SyncDocument) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("导入预览")
+                .font(.headline)
+                .foregroundStyle(Theme.textPrimary)
+            Text("将合并 \(doc.tasks.count) 个任务 / \(doc.columns.count) 个看板列 / \(doc.dayPlans.count) 个日计划")
+                .font(.callout)
+                .foregroundStyle(Theme.textSecondary)
+            Toggle("同时导入设置(含 API Key 等密钥)", isOn: $importIncludesSettings)
+                .toggleStyle(.switch)
+                .foregroundStyle(Theme.textPrimary)
+            HStack {
+                Spacer()
+                Button("取消") { pendingImport = nil }
+                    .buttonStyle(NoirPillButtonStyle())
+                Button("导入") {
+                    performImport(doc)
+                    pendingImport = nil
+                }
+                .buttonStyle(NoirPillButtonStyle(prominent: true))
+            }
+        }
+        .padding(20)
+        .frame(width: 380)
+        .background(
+            LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
+                           startPoint: .top, endPoint: .bottom)
+        )
+        .preferredColorScheme(.dark)
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             sidebar
@@ -92,6 +182,9 @@ struct SettingsView: View {
                 .stroke(Theme.stroke, lineWidth: 1)
         )
         .preferredColorScheme(.dark)
+        .sheet(item: $pendingImport) { pending in
+            importConfirmSheet(pending.doc)
+        }
         .onKeyPress(.escape) { onClose(); return .handled }
     }
 
@@ -196,7 +289,8 @@ struct SettingsView: View {
     }
 
     private var generalSection: some View {
-        section("通用", systemImage: "slider.horizontal.3") {
+        VStack(alignment: .leading, spacing: 18) {
+            section("通用", systemImage: "slider.horizontal.3") {
                 row("开机自启动", systemImage: "power") {
                     Toggle("", isOn: $launchAtLogin)
                         .labelsHidden()
@@ -228,6 +322,22 @@ struct SettingsView: View {
                     .fixedSize()
                 }
             }
+            dataSyncCard
+        }
+    }
+
+    private var dataSyncCard: some View {
+        section("数据同步", systemImage: "arrow.triangle.2.circlepath") {
+            row("导出到文件", systemImage: "square.and.arrow.up") {
+                Button("导出…") { runExport() }
+                    .buttonStyle(NoirPillButtonStyle())
+            }
+            divider
+            row("从文件导入", systemImage: "square.and.arrow.down") {
+                Button("导入…") { chooseImport() }
+                    .buttonStyle(NoirPillButtonStyle())
+            }
+        }
     }
 
     private var reminderSection: some View {
