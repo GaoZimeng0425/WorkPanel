@@ -53,6 +53,7 @@ final class SyncPeerBrowser {
             if case let .bonjour(txt) = result.metadata, let d = txt["device"] { device = d }
             found.append(DiscoveredPeer(id: name, deviceName: device, endpoint: result.endpoint))
         }
+        guard found != peers else { return }   // 集合无变化则不触发,避免每次浏览刷新都引发一轮同步
         peers = found
         onChange(found)
     }
