@@ -43,4 +43,16 @@ struct SaveTrackingTests {
         try ctx.save()
         #expect(task.modifiedAt == early)
     }
+
+    @Test func saveTrackingSkipsDeletedModels() throws {
+        let ctx = try makeContext()
+        let task = TodoTask(title: "T")
+        ctx.insert(task)
+        try ctx.save()
+        ctx.delete(task)
+        // 删除后经 saveTracking 落库:不应崩溃,删除应正常生效
+        try ctx.saveTracking(now: Date(timeIntervalSince1970: 5000))
+        let remaining = try ctx.fetch(FetchDescriptor<TodoTask>())
+        #expect(remaining.isEmpty)
+    }
 }
