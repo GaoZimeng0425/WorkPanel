@@ -23,7 +23,9 @@ final class SyncPeerServer {
 
     /// 纯路由:GET /sync + 正确配对码 → 200 + body();非 GET → 405;配对码错/缺 → 401;其它路径 → 404。
     static func route(_ req: HTTPRequest, code: String, body: () throws -> Data) -> Data {
+        // 注意:与 MCPServer 相反——同步是只读导出,只接受 GET(MCP 接受 POST)。
         guard req.method == "GET" else { return HTTPResponse.methodNotAllowed() }
+        // 借用 MCPServer.authorized:纯字符串 Bearer 比较,无 MCPServer 状态依赖。
         guard MCPServer.authorized(req.headers, token: code) else { return HTTPResponse.unauthorized() }
         guard req.path == "/sync" else { return HTTPResponse.build(status: 404, reason: "Not Found") }
         do { return HTTPResponse.json(try body()) }
@@ -68,6 +70,8 @@ final class SyncPeerServer {
                     conn.send(content: resp, completion: .contentProcessed { _ in conn.cancel() })
                 } else if isDone || error != nil {
                     conn.cancel()
+                } else if acc.count > 1_048_576 {
+                    conn.cancel()                    // 防滥用:GET /sync 本应极小,异常超大请求直接断开
                 } else {
                     self.receive(conn, buffer: acc)
                 }

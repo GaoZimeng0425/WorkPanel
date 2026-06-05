@@ -40,4 +40,10 @@ struct SyncPeerServerTests {
                                         code: "secret", body: { Data("{}".utf8) })
         #expect(status(of: resp) == 404)
     }
+    @Test func bodyThrowReturns500() {
+        struct E: Error {}
+        let resp = SyncPeerServer.route(request(method: "GET", path: "/sync", code: "secret"),
+                                        code: "secret", body: { throw E() })
+        #expect(status(of: resp) == 500)
+    }
 }
