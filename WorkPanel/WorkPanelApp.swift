@@ -16,7 +16,7 @@ enum SharedModel {
     }()
 
     @MainActor static let container: ModelContainer = {
-        let schema = Schema([TodoTask.self, BoardColumn.self, DayPlan.self])
+        let schema = Schema([TodoTask.self, BoardColumn.self, DayPlan.self, Tombstone.self])
         let config = isUITesting
             ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             : ModelConfiguration(schema: schema, url: storeURL)
