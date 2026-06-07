@@ -190,6 +190,7 @@ struct BoardStoreTests {
         #expect(tombs.count == 1)
         #expect(tombs.first?.id == a.id)
         #expect(tombs.first?.kind == .column)
+        #expect(tombs.first?.deletedAt == Date(timeIntervalSince1970: 100))
     }
 
     @Test func deleteLastColumnCreatesNoTombstone() throws {
