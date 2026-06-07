@@ -8,15 +8,17 @@ struct SyncServiceMergeTests {
     private func makeContext() throws -> ModelContext {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
-            for: TodoTask.self, BoardColumn.self, DayPlan.self, configurations: config)
+            for: TodoTask.self, BoardColumn.self, DayPlan.self, Tombstone.self, configurations: config)
         return ModelContext(container)
     }
 
     private func docWith(tasks: [SyncTaskDTO] = [], columns: [SyncColumnDTO] = [],
                          dayPlans: [SyncDayPlanDTO] = [],
+                         tombstones: [SyncTombstoneDTO] = [],
                          settings: SyncSettingsDTO = SyncSettingsDTO()) -> SyncDocument {
         SyncDocument(schemaVersion: 1, exportedAt: .now,
-                     tasks: tasks, columns: columns, dayPlans: dayPlans, settings: settings)
+                     tasks: tasks, columns: columns, dayPlans: dayPlans,
+                     settings: settings, tombstones: tombstones)
     }
 
     @Test func insertsTaskNotPresentLocally() throws {
@@ -151,5 +153,85 @@ struct SyncServiceMergeTests {
         let report = try SyncService.merge(docWith(columns: [dto]), into: ctx, includeSettings: false)
         #expect(local.name == "新名")
         #expect(report.columnsUpdated == 1)
+    }
+
+    @Test func tombstoneDeletesLocalTask() throws {
+        let ctx = try makeContext()
+        let local = TodoTask(title: "删我")
+        local.modifiedAt = Date(timeIntervalSince1970: 10)
+        ctx.insert(local); try ctx.save()
+        let tomb = SyncTombstoneDTO(Tombstone(id: local.id, kind: .task,
+                                              deletedAt: Date(timeIntervalSince1970: 20)))
+        let report = try SyncService.merge(docWith(tombstones: [tomb]), into: ctx, includeSettings: false)
+        #expect(try ctx.fetch(FetchDescriptor<TodoTask>()).isEmpty)
+        #expect(report.tasksDeleted == 1)
+        #expect(try ctx.fetch(FetchDescriptor<Tombstone>()).count == 1)   // 墓碑留存继续传播
+    }
+
+    @Test func tombstoneSuppressesReinsertFromThirdDoc() throws {
+        let ctx = try makeContext()
+        let id = UUID()
+        let tomb = SyncTombstoneDTO(Tombstone(id: id, kind: .task,
+                                              deletedAt: Date(timeIntervalSince1970: 20)))
+        _ = try SyncService.merge(docWith(tombstones: [tomb]), into: ctx, includeSettings: false)
+        // 第三设备仍持活任务(改动早于删除),无墓碑
+        let live = TodoTask(title: "复活?")
+        live.modifiedAt = Date(timeIntervalSince1970: 10)
+        var dto = SyncTaskDTO(live); dto.id = id
+        let report = try SyncService.merge(docWith(tasks: [dto]), into: ctx, includeSettings: false)
+        #expect(try ctx.fetch(FetchDescriptor<TodoTask>()).isEmpty)   // 未复活
+        #expect(report.tasksInserted == 0)
+    }
+
+    @Test func newerEditSupersedesTombstone() throws {
+        let ctx = try makeContext()
+        let id = UUID()
+        let tomb = SyncTombstoneDTO(Tombstone(id: id, kind: .task,
+                                              deletedAt: Date(timeIntervalSince1970: 20)))
+        _ = try SyncService.merge(docWith(tombstones: [tomb]), into: ctx, includeSettings: false)
+        let edited = TodoTask(title: "改后")
+        edited.modifiedAt = Date(timeIntervalSince1970: 30)   // 晚于删除
+        var dto = SyncTaskDTO(edited); dto.id = id
+        let report = try SyncService.merge(docWith(tasks: [dto]), into: ctx, includeSettings: false)
+        let tasks = try ctx.fetch(FetchDescriptor<TodoTask>())
+        #expect(tasks.count == 1)                       // 复活
+        #expect(tasks.first?.title == "改后")
+        #expect(report.tasksInserted == 1)
+        #expect(try ctx.fetch(FetchDescriptor<Tombstone>()).isEmpty)   // 墓碑被撤销
+    }
+
+    @Test func tombstoneTieDeletes() throws {
+        let ctx = try makeContext()
+        let id = UUID()
+        let tomb = SyncTombstoneDTO(Tombstone(id: id, kind: .task,
+                                              deletedAt: Date(timeIntervalSince1970: 20)))
+        _ = try SyncService.merge(docWith(tombstones: [tomb]), into: ctx, includeSettings: false)
+        let same = TodoTask(title: "同刻")
+        same.modifiedAt = Date(timeIntervalSince1970: 20)   // 与删除相等
+        var dto = SyncTaskDTO(same); dto.id = id
+        let report = try SyncService.merge(docWith(tasks: [dto]), into: ctx, includeSettings: false)
+        #expect(try ctx.fetch(FetchDescriptor<TodoTask>()).isEmpty)   // 删除胜
+        #expect(report.tasksInserted == 0)
+    }
+
+    @Test func unknownTombstoneIsHarmless() throws {
+        let ctx = try makeContext()
+        let tomb = SyncTombstoneDTO(Tombstone(id: UUID(), kind: .task,
+                                              deletedAt: Date(timeIntervalSince1970: 20)))
+        let report = try SyncService.merge(docWith(tombstones: [tomb]), into: ctx, includeSettings: false)
+        #expect(report.tasksDeleted == 0)
+        #expect(try ctx.fetch(FetchDescriptor<Tombstone>()).count == 1)   // 仍留存继续传播
+    }
+
+    @Test func tombstoneDeletesLocalColumn() throws {
+        let ctx = try makeContext()
+        let col = BoardColumn(name: "删列", order: 0)
+        col.modifiedAt = Date(timeIntervalSince1970: 10)
+        ctx.insert(col); try ctx.save()
+        let tomb = SyncTombstoneDTO(Tombstone(id: col.id, kind: .column,
+                                              deletedAt: Date(timeIntervalSince1970: 20)))
+        let report = try SyncService.merge(docWith(tombstones: [tomb]), into: ctx, includeSettings: false)
+        #expect(try ctx.fetch(FetchDescriptor<BoardColumn>()).isEmpty)
+        #expect(report.columnsDeleted == 1)
     }
 }

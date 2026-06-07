@@ -51,37 +51,65 @@ enum SyncService {
         return doc
     }
 
-    /// 按 ID 合并(DayPlan 按归一化 day),最新者胜。刻意用普通 save() 以保留文件时间戳。
+    /// 按 ID 合并(DayPlan 按归一化 day),最新者胜;墓碑传播删除并抑制复活。
+    /// 刻意用普通 save() 以保留文件时间戳。
     @discardableResult
     static func merge(_ doc: SyncDocument, into context: ModelContext,
                       includeSettings: Bool, calendar: Calendar = .current) throws -> SyncReport {
         var report = SyncReport()
 
-        // 列(先于任务,使 columnID 引用可解析)
+        // 本地映射(task / column / 墓碑),供墓碑阶段与抑制判断复用
+        let existingTombs = try context.fetch(FetchDescriptor<Tombstone>())
+        var tombByID = Dictionary(uniqueKeysWithValues: existingTombs.map { ($0.id, $0) })
         let cols = try context.fetch(FetchDescriptor<BoardColumn>())
         var colByID = Dictionary(uniqueKeysWithValues: cols.map { ($0.id, $0) })
+        let tasks = try context.fetch(FetchDescriptor<TodoTask>())
+        var taskByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
+
+        // 阶段一:合并传入墓碑,并按(合并后的)墓碑时间删除本地记录
+        for dto in doc.tombstones ?? [] {
+            if let local = tombByID[dto.id] {
+                if dto.deletedAt > local.deletedAt { local.deletedAt = dto.deletedAt }
+            } else {
+                let t = dto.makeModel(); context.insert(t); tombByID[dto.id] = t
+            }
+            let at = tombByID[dto.id]!.deletedAt
+            if let task = taskByID[dto.id], task.modifiedAt <= at {
+                context.delete(task); taskByID[dto.id] = nil; report.tasksDeleted += 1
+            }
+            if let col = colByID[dto.id], col.modifiedAt <= at {
+                context.delete(col); colByID[dto.id] = nil; report.columnsDeleted += 1
+            }
+        }
+
+        // 列(先于任务,使 columnID 引用可解析)
         for dto in doc.columns {
+            if let tomb = tombByID[dto.id], tomb.deletedAt >= dto.modifiedAt { continue }   // 删除胜
             if let local = colByID[dto.id] {
                 if dto.modifiedAt > local.modifiedAt { dto.apply(to: local); report.columnsUpdated += 1 }
             } else {
                 let c = dto.makeModel(); context.insert(c); colByID[dto.id] = c; report.columnsInserted += 1
             }
+            if let tomb = tombByID[dto.id], dto.modifiedAt > tomb.deletedAt {
+                context.delete(tomb); tombByID[dto.id] = nil   // 复活:撤销被超越的墓碑
+            }
         }
 
         // 任务
-        let tasks = try context.fetch(FetchDescriptor<TodoTask>())
-        var taskByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
         for dto in doc.tasks {
+            if let tomb = tombByID[dto.id], tomb.deletedAt >= dto.modifiedAt { continue }   // 删除胜
             if let local = taskByID[dto.id] {
                 if dto.modifiedAt > local.modifiedAt { dto.apply(to: local); report.tasksUpdated += 1 }
             } else {
                 let t = dto.makeModel(); context.insert(t); taskByID[dto.id] = t; report.tasksInserted += 1
             }
+            if let tomb = tombByID[dto.id], dto.modifiedAt > tomb.deletedAt {
+                context.delete(tomb); tombByID[dto.id] = nil   // 复活:撤销被超越的墓碑
+            }
         }
 
         // 日计划(按 day 匹配)
         var plans = try context.fetch(FetchDescriptor<DayPlan>())
-        // DayPlan 无 id,按归一化 day 线性匹配。日计划量级小(每天一条),O(n*m) 可接受。
         for dto in doc.dayPlans {
             let day = calendar.startOfDay(for: dto.day)
             if let local = plans.first(where: { calendar.isDate($0.day, inSameDayAs: day) }) {
@@ -91,14 +119,14 @@ enum SyncService {
                 }
             } else {
                 let p = dto.makeModel()
-                p.day = day            // 维持 DayPlan.day 归一化到 00:00 的不变量
+                p.day = day
                 context.insert(p); plans.append(p); report.dayPlansInserted += 1
             }
         }
 
         if includeSettings { SyncSettings.apply(doc.settings); report.settingsApplied = true }
 
-        try context.save()      // 普通 save:保留文件时间戳,不重新打点
+        try context.save()
         return report
     }
 }
