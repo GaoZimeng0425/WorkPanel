@@ -66,45 +66,48 @@ enum SyncService {
         let tasks = try context.fetch(FetchDescriptor<TodoTask>())
         var taskByID = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
 
-        // 阶段一:合并传入墓碑,并按(合并后的)墓碑时间删除本地记录
+        // 阶段一:合并传入墓碑,并按(合并后的)墓碑时间删除同类型本地记录
         for dto in doc.tombstones ?? [] {
-            if let local = tombByID[dto.id] {
-                if dto.deletedAt > local.deletedAt { local.deletedAt = dto.deletedAt }
+            let local: Tombstone
+            if let existing = tombByID[dto.id] {
+                if dto.deletedAt > existing.deletedAt { existing.deletedAt = dto.deletedAt }
+                local = existing
             } else {
-                let t = dto.makeModel(); context.insert(t); tombByID[dto.id] = t
+                local = dto.makeModel(); context.insert(local); tombByID[dto.id] = local
             }
-            let at = tombByID[dto.id]!.deletedAt
-            if let task = taskByID[dto.id], task.modifiedAt <= at {
+            let at = local.deletedAt
+            // 按 kind 区分命名空间:任务墓碑只删任务,列墓碑只删列
+            if local.kind == .task, let task = taskByID[dto.id], task.modifiedAt <= at {
                 context.delete(task); taskByID[dto.id] = nil; report.tasksDeleted += 1
             }
-            if let col = colByID[dto.id], col.modifiedAt <= at {
+            if local.kind == .column, let col = colByID[dto.id], col.modifiedAt <= at {
                 context.delete(col); colByID[dto.id] = nil; report.columnsDeleted += 1
             }
         }
 
         // 列(先于任务,使 columnID 引用可解析)
         for dto in doc.columns {
-            if let tomb = tombByID[dto.id], tomb.deletedAt >= dto.modifiedAt { continue }   // 删除胜
+            if let tomb = tombByID[dto.id], tomb.kind == .column, tomb.deletedAt >= dto.modifiedAt { continue }   // 删除胜
             if let local = colByID[dto.id] {
                 if dto.modifiedAt > local.modifiedAt { dto.apply(to: local); report.columnsUpdated += 1 }
             } else {
                 let c = dto.makeModel(); context.insert(c); colByID[dto.id] = c; report.columnsInserted += 1
             }
-            if let tomb = tombByID[dto.id], dto.modifiedAt > tomb.deletedAt {
-                context.delete(tomb); tombByID[dto.id] = nil   // 复活:撤销被超越的墓碑
+            if let tomb = tombByID[dto.id], tomb.kind == .column, dto.modifiedAt > tomb.deletedAt {
+                context.delete(tomb); tombByID[dto.id] = nil   // 复活:撤销被超越的列墓碑
             }
         }
 
         // 任务
         for dto in doc.tasks {
-            if let tomb = tombByID[dto.id], tomb.deletedAt >= dto.modifiedAt { continue }   // 删除胜
+            if let tomb = tombByID[dto.id], tomb.kind == .task, tomb.deletedAt >= dto.modifiedAt { continue }   // 删除胜
             if let local = taskByID[dto.id] {
                 if dto.modifiedAt > local.modifiedAt { dto.apply(to: local); report.tasksUpdated += 1 }
             } else {
                 let t = dto.makeModel(); context.insert(t); taskByID[dto.id] = t; report.tasksInserted += 1
             }
-            if let tomb = tombByID[dto.id], dto.modifiedAt > tomb.deletedAt {
-                context.delete(tomb); tombByID[dto.id] = nil   // 复活:撤销被超越的墓碑
+            if let tomb = tombByID[dto.id], tomb.kind == .task, dto.modifiedAt > tomb.deletedAt {
+                context.delete(tomb); tombByID[dto.id] = nil   // 复活:撤销被超越的任务墓碑
             }
         }
 

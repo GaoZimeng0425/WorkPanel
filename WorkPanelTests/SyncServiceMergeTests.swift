@@ -234,4 +234,20 @@ struct SyncServiceMergeTests {
         #expect(try ctx.fetch(FetchDescriptor<BoardColumn>()).isEmpty)
         #expect(report.columnsDeleted == 1)
     }
+
+    @Test func columnTombstoneDoesNotDeleteTaskWithSameID() throws {
+        let ctx = try makeContext()
+        let shared = UUID()
+        let task = TodoTask(title: "保留")
+        task.id = shared
+        task.modifiedAt = Date(timeIntervalSince1970: 10)
+        ctx.insert(task); try ctx.save()
+        // .column 墓碑,id 与任务相同 —— 不得误删任务
+        let tomb = SyncTombstoneDTO(Tombstone(id: shared, kind: .column,
+                                              deletedAt: Date(timeIntervalSince1970: 20)))
+        let report = try SyncService.merge(docWith(tombstones: [tomb]), into: ctx, includeSettings: false)
+        #expect(try ctx.fetch(FetchDescriptor<TodoTask>()).count == 1)
+        #expect(report.tasksDeleted == 0)
+        #expect(report.columnsDeleted == 0)
+    }
 }
