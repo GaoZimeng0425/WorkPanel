@@ -29,13 +29,15 @@ enum SyncService {
         let tasks   = try context.fetch(FetchDescriptor<TodoTask>())
         let columns = try context.fetch(FetchDescriptor<BoardColumn>())
         let plans   = try context.fetch(FetchDescriptor<DayPlan>())
+        let tombs   = try context.fetch(FetchDescriptor<Tombstone>())
         let doc = SyncDocument(
             schemaVersion: SyncDocument.currentSchemaVersion,
             exportedAt: now,
             tasks: tasks.map(SyncTaskDTO.init),
             columns: columns.map(SyncColumnDTO.init),
             dayPlans: plans.map(SyncDayPlanDTO.init),
-            settings: includeSettings ? SyncSettings.snapshot() : SyncSettingsDTO()
+            settings: includeSettings ? SyncSettings.snapshot() : SyncSettingsDTO(),
+            tombstones: tombs.map(SyncTombstoneDTO.init)
         )
         return try SyncDocument.encoder.encode(doc)
     }
