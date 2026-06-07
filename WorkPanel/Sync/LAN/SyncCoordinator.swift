@@ -72,7 +72,7 @@ final class SyncCoordinator {
                 do {
                     let doc = try await SyncClient.fetch(from: peer.endpoint, code: self.code)
                     let report = try SyncService.merge(doc, into: self.context, includeSettings: false)
-                    self.status.lastSync = "已同步 \(peer.deviceName):新增 \(report.totalInserted),更新 \(report.totalUpdated)"
+                    self.status.lastSync = "已同步 \(peer.deviceName):新增 \(report.totalInserted),更新 \(report.totalUpdated),删除 \(report.totalDeleted)"
                 } catch {
                     self.status.lastSync = "同步 \(peer.deviceName) 失败"
                 }
