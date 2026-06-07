@@ -89,7 +89,14 @@ struct SyncDocumentTests {
         let doc = SyncDocument(schemaVersion: 1, exportedAt: Date(timeIntervalSince1970: 0),
                                tasks: [], columns: [], dayPlans: [], settings: SyncSettingsDTO())
         let data = try SyncDocument.encoder.encode(doc)
+        #expect(!(String(data: data, encoding: .utf8) ?? "").contains("tombstones"))
         let back = try SyncDocument.decoder.decode(SyncDocument.self, from: data)
         #expect(back.tombstones == nil)
+    }
+
+    @Test func tombstoneDTOUnknownKindFallsBackToTask() throws {
+        var dto = SyncTombstoneDTO(Tombstone(id: UUID(), kind: .task, deletedAt: Date(timeIntervalSince1970: 1)))
+        dto.kind = "unknown_future_kind"
+        #expect(dto.makeModel().kind == .task)
     }
 }
