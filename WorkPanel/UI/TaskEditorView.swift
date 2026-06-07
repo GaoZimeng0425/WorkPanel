@@ -381,7 +381,7 @@ struct TaskEditorView: View {
     private func deleteTask() {
         guard case .edit(let task) = mode else { return }
         scheduler.cancel(for: task)
-        context.delete(task)
+        todoStore.delete(task)
         try? context.saveTracking()
         onClose()
     }

@@ -21,7 +21,7 @@ struct LensCard: View {
             .contextMenu {
                 Button("删除", role: .destructive) {
                     scheduler.cancel(for: task)
-                    context.delete(task)
+                    todoStore.delete(task)
                     try? context.saveTracking()
                 }
             }
