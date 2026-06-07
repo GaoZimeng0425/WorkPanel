@@ -53,7 +53,7 @@ final class BoardStore {
     }
 
     /// 删除列;列内任务移到第一列。至少保留一个活动列(只剩一列时不删)。
-    func delete(_ column: BoardColumn) {
+    func delete(_ column: BoardColumn, now: Date = .now) {
         let cols = columns()
         guard cols.count > 1, let target = cols.first(where: { $0.id != column.id })
         else { return }
@@ -61,7 +61,9 @@ final class BoardStore {
         for task in tasks where task.columnID == column.id {
             task.columnID = target.id
         }
+        let id = column.id
         context.delete(column)
+        context.insert(Tombstone(id: id, kind: .column, deletedAt: now))
     }
 
     /// 把 task 放到目标列「第 index 个卡片之前」(insert-before),并把该列未完成任务的

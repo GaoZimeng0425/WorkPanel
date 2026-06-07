@@ -8,7 +8,7 @@ struct TodoStoreTests {
     private var calendar = Calendar(identifier: .gregorian)
     private func makeStore() throws -> TodoStore {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: TodoTask.self, configurations: config)
+        let container = try ModelContainer(for: TodoTask.self, Tombstone.self, configurations: config)
         return TodoStore(context: ModelContext(container))
     }
 
@@ -100,5 +100,20 @@ struct TodoStoreTests {
         store.context.insert(task)
         let next = store.complete(task)
         #expect(next?.urgencyOverride == false)
+    }
+
+    @Test func deleteCreatesTaskTombstone() throws {
+        let store = try makeStore()
+        let task = TodoTask(title: "删我")
+        store.context.insert(task)
+        let id = task.id
+        store.delete(task, now: Date(timeIntervalSince1970: 100))
+        try store.context.save()
+        #expect(try store.context.fetch(FetchDescriptor<TodoTask>()).isEmpty)
+        let tombs = try store.context.fetch(FetchDescriptor<Tombstone>())
+        #expect(tombs.count == 1)
+        #expect(tombs.first?.id == id)
+        #expect(tombs.first?.kind == .task)
+        #expect(tombs.first?.deletedAt == Date(timeIntervalSince1970: 100))
     }
 }
