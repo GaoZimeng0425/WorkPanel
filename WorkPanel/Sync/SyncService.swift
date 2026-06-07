@@ -12,10 +12,13 @@ struct SyncReport {
     var columnsUpdated = 0
     var dayPlansInserted = 0
     var dayPlansUpdated = 0
+    var tasksDeleted = 0
+    var columnsDeleted = 0
     var settingsApplied = false
 
     var totalInserted: Int { tasksInserted + columnsInserted + dayPlansInserted }
     var totalUpdated: Int { tasksUpdated + columnsUpdated + dayPlansUpdated }
+    var totalDeleted: Int { tasksDeleted + columnsDeleted }
 }
 
 @MainActor

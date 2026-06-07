@@ -72,4 +72,24 @@ struct SyncDocumentTests {
         #expect(back.committedTaskIDs == ids)
         #expect(back.modifiedAt == Date(timeIntervalSince1970: 222))
     }
+
+    @Test func tombstoneDTORoundTrips() throws {
+        let t = Tombstone(id: UUID(), kind: .column, deletedAt: Date(timeIntervalSince1970: 123))
+        let dto = SyncTombstoneDTO(t)
+        let data = try SyncDocument.encoder.encode(dto)
+        let back = try SyncDocument.decoder.decode(SyncTombstoneDTO.self, from: data)
+        #expect(back.id == t.id)
+        #expect(back.kind == "column")
+        #expect(back.deletedAt == Date(timeIntervalSince1970: 123))
+        #expect(back.makeModel().kind == .column)
+    }
+
+    @Test func documentMissingTombstonesDecodesAsNil() throws {
+        // tombstones 为 nil → 编码省略该键(模拟旧版本文档)→ 解码回 nil
+        let doc = SyncDocument(schemaVersion: 1, exportedAt: Date(timeIntervalSince1970: 0),
+                               tasks: [], columns: [], dayPlans: [], settings: SyncSettingsDTO())
+        let data = try SyncDocument.encoder.encode(doc)
+        let back = try SyncDocument.decoder.decode(SyncDocument.self, from: data)
+        #expect(back.tombstones == nil)
+    }
 }
