@@ -25,7 +25,6 @@ struct TaskEditorView: View {
     @State private var columnID: UUID?
     @State private var showingStatusPicker = false
     @State private var showingTimePicker = false
-    @State private var editingRangeEnd = true     // true=编辑结束(deadline) / false=编辑开始(start)
     @State private var showingExpandMenu = false
     @State private var deadline: Date?
     @State private var startDate: Date?
@@ -250,17 +249,6 @@ struct TaskEditorView: View {
         }
     }
 
-    private var deadlineBinding: Binding<Date> {
-        Binding(get: { deadline ?? defaultDeadline() }, set: { deadline = $0 })
-    }
-
-    private func defaultDeadline() -> Date {
-        let cal = Calendar.current
-        let hour = cal.dateComponents([.year, .month, .day, .hour], from: .now)
-        let base = cal.date(from: hour) ?? .now
-        return cal.date(byAdding: .hour, value: 1, to: base) ?? .now
-    }
-
     /// 单按钮时间范围:按钮显示「开始 → 结束」摘要,点开弹层用 [开始|结束] 分段切换编辑哪一端。
     @ViewBuilder
     private var timeRangeControl: some View {
@@ -294,33 +282,13 @@ struct TaskEditorView: View {
         }
     }
 
-    private var editingBinding: Binding<Date> { editingRangeEnd ? deadlineBinding : startBinding }
-    private var editingValue: Date? { editingRangeEnd ? deadline : startDate }
-
     private var timeRangePopover: some View {
         VStack(alignment: .leading, spacing: 10) {
-            NoirSegmented(
-                segments: [.init(value: false, label: "开始"), .init(value: true, label: "结束")],
-                selection: $editingRangeEnd
-            )
-            if editingValue == nil {
-                Button {
-                    if editingRangeEnd { deadline = defaultDeadline() } else { startDate = defaultStart() }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus.circle")
-                        Text(editingRangeEnd ? "设置结束" : "设置开始")
-                    }
-                    .noirPickerPill()
-                }
-                .buttonStyle(.plain)
-            } else {
-                NoirDatePicker(date: editingBinding)
+            NoirRangeCalendar(start: $startDate, end: $deadline)
+            if !rangeIsEmpty {
                 HStack {
                     Spacer()
-                    Button {
-                        if editingRangeEnd { deadline = nil } else { startDate = nil }
-                    } label: {
+                    Button { startDate = nil; deadline = nil } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "xmark.circle.fill")
                             Text("清除")
@@ -332,20 +300,10 @@ struct TaskEditorView: View {
                 }
             }
         }
-        .padding(12)
-        .frame(width: 250)
+        .padding(14)
+        .frame(width: 452)
         .background(Theme.panelBottom)
         .preferredColorScheme(.dark)
-    }
-
-    private var startBinding: Binding<Date> {
-        Binding(get: { startDate ?? defaultStart() }, set: { startDate = $0 })
-    }
-
-    private func defaultStart() -> Date {
-        let cal = Calendar.current
-        let hour = cal.dateComponents([.year, .month, .day, .hour], from: .now)
-        return cal.date(from: hour) ?? .now
     }
 
     private func controlRow<C: View>(_ label: String,
