@@ -53,6 +53,18 @@ struct GanttGeometryTests {
         #expect(g.daysDelta(translationX: -60) == -2)  // -1.5 → -2
     }
 
+    @Test func barFrameStartOnlyIsSingleDay() {
+        let g = geo()
+        let f = g.barFrame(start: day(3), end: nil)
+        #expect(f?.x == 120)
+        #expect(f?.width == 40)
+    }
+
+    @Test func daysDeltaPositiveHalfRoundsUp() {
+        let g = geo(dayWidth: 40)
+        #expect(g.daysDelta(translationX: 20) == 1)   // 正好 0.5 天 → 远离零取整 → 1
+    }
+
     @Test func shiftedKeepsDuration() {
         let g = geo()
         let r = g.shifted(start: day(1), end: day(3), byDays: 2)

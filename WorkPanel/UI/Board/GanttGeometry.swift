@@ -95,6 +95,7 @@ struct GanttGeometry: Sendable {
     nonisolated static func partition(_ rows: [GanttRow])
         -> (scheduled: [GanttRow], unscheduled: [GanttRow]) {
         let scheduled = rows.filter(\.isScheduled)
+            // effectiveStart 对 isScheduled 行恒非 nil;?? .distantPast 仅为防御性兜底
             .sorted { ($0.effectiveStart ?? .distantPast) < ($1.effectiveStart ?? .distantPast) }
         let unscheduled = rows.filter { !$0.isScheduled }
         return (scheduled, unscheduled)
