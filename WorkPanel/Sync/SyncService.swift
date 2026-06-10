@@ -129,6 +129,7 @@ enum SyncService {
 
         if includeSettings { SyncSettings.apply(doc.settings); report.settingsApplied = true }
 
+        TagStore(context: context).reconcileFromTasks()
         try context.save()
         return report
     }
