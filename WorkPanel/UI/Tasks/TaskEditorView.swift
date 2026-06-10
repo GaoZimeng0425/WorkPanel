@@ -24,11 +24,11 @@ struct TaskEditorView: View {
     @State private var selectedTags: [String]
     @State private var columnID: UUID?
     @State private var showingStatusPicker = false
-    @State private var showingDatePicker = false
+    @State private var showingTimePicker = false
+    @State private var editingRangeEnd = true     // true=编辑结束(deadline) / false=编辑开始(start)
     @State private var showingExpandMenu = false
     @State private var deadline: Date?
     @State private var startDate: Date?
-    @State private var showingStartPicker = false
     @State private var expandPrompt: AIPrompt?
     private let base: ParsedInput
 
@@ -242,8 +242,7 @@ struct TaskEditorView: View {
                     selection: $priority
                 )
             }
-            controlRow("开始") { startControl }
-            controlRow("时间") { deadlineControl }
+            controlRow("时间") { timeRangeControl }
             controlRow("状态") { statusMenu }
             controlRow("标签") {
                 TagPickerField(selected: $selectedTags, existing: allTags)
@@ -262,46 +261,81 @@ struct TaskEditorView: View {
         return cal.date(byAdding: .hour, value: 1, to: base) ?? .now
     }
 
+    /// 单按钮时间范围:按钮显示「开始 → 结束」摘要,点开弹层用 [开始|结束] 分段切换编辑哪一端。
     @ViewBuilder
-    private var deadlineControl: some View {
-        if deadline != nil {
-            HStack(spacing: 8) {
-                Button { showingDatePicker = true } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "calendar").font(.system(size: 10))
-                        Text(deadlineBinding.wrappedValue.formatted(date: .abbreviated, time: .shortened))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(Theme.textTertiary)
+    private var timeRangeControl: some View {
+        Button { showingTimePicker = true } label: {
+            HStack(spacing: 5) {
+                Image(systemName: rangeIsEmpty ? "calendar.badge.plus" : "calendar")
+                    .font(.system(size: 10))
+                Text(rangeSummary)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+            }
+            .noirPickerPill()
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showingTimePicker, arrowEdge: .bottom) {
+            timeRangePopover
+        }
+    }
+
+    private var rangeIsEmpty: Bool { startDate == nil && deadline == nil }
+
+    private var rangeSummary: String {
+        if rangeIsEmpty { return "添加时间" }
+        let fmt: (Date) -> String = { $0.formatted(date: .abbreviated, time: .shortened) }
+        let s = startDate.map(fmt) ?? ""
+        let e = deadline.map(fmt) ?? ""
+        switch (startDate, deadline) {
+        case (.some, .some): return "\(s) → \(e)"
+        case (.some, .none): return "\(s) →"
+        case (.none, .some): return "→ \(e)"
+        case (.none, .none): return "添加时间"
+        }
+    }
+
+    private var editingBinding: Binding<Date> { editingRangeEnd ? deadlineBinding : startBinding }
+    private var editingValue: Date? { editingRangeEnd ? deadline : startDate }
+
+    private var timeRangePopover: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            NoirSegmented(
+                segments: [.init(value: false, label: "开始"), .init(value: true, label: "结束")],
+                selection: $editingRangeEnd
+            )
+            if editingValue == nil {
+                Button {
+                    if editingRangeEnd { deadline = defaultDeadline() } else { startDate = defaultStart() }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus.circle")
+                        Text(editingRangeEnd ? "设置结束" : "设置开始")
                     }
-                    .foregroundStyle(Theme.textPrimary)
                     .noirPickerPill()
                 }
                 .buttonStyle(.plain)
-                .popover(isPresented: $showingDatePicker, arrowEdge: .bottom) {
-                    NoirDatePicker(date: deadlineBinding)
-                        .padding(12)
-                        .frame(width: 250)
-                        .background(Theme.panelBottom)
-                        .preferredColorScheme(.dark)
-                }
-                Button { deadline = nil } label: {
-                    Image(systemName: "xmark.circle.fill")
+            } else {
+                NoirDatePicker(date: editingBinding)
+                HStack {
+                    Spacer()
+                    Button {
+                        if editingRangeEnd { deadline = nil } else { startDate = nil }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark.circle.fill")
+                            Text("清除")
+                        }
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Theme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
-        } else {
-            Button { deadline = defaultDeadline() } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar.badge.plus")
-                    Text("添加时间")
-                }
-                .foregroundStyle(Theme.textTertiary)
-                .noirPickerPill()
-            }
-            .buttonStyle(.plain)
         }
+        .padding(12)
+        .frame(width: 250)
+        .background(Theme.panelBottom)
+        .preferredColorScheme(.dark)
     }
 
     private var startBinding: Binding<Date> {
@@ -312,48 +346,6 @@ struct TaskEditorView: View {
         let cal = Calendar.current
         let hour = cal.dateComponents([.year, .month, .day, .hour], from: .now)
         return cal.date(from: hour) ?? .now
-    }
-
-    @ViewBuilder
-    private var startControl: some View {
-        if startDate != nil {
-            HStack(spacing: 8) {
-                Button { showingStartPicker = true } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "calendar").font(.system(size: 10))
-                        Text(startBinding.wrappedValue.formatted(date: .abbreviated, time: .shortened))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(Theme.textTertiary)
-                    }
-                    .foregroundStyle(Theme.textPrimary)
-                    .noirPickerPill()
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showingStartPicker, arrowEdge: .bottom) {
-                    NoirDatePicker(date: startBinding)
-                        .padding(12)
-                        .frame(width: 250)
-                        .background(Theme.panelBottom)
-                        .preferredColorScheme(.dark)
-                }
-                Button { startDate = nil } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Theme.textTertiary)
-                }
-                .buttonStyle(.plain)
-            }
-        } else {
-            Button { startDate = defaultStart() } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar.badge.plus")
-                    Text("添加开始")
-                }
-                .foregroundStyle(Theme.textTertiary)
-                .noirPickerPill()
-            }
-            .buttonStyle(.plain)
-        }
     }
 
     private func controlRow<C: View>(_ label: String,
