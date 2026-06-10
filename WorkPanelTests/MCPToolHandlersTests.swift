@@ -236,6 +236,13 @@ struct MCPToolHandlersTests {
         }
     }
 
+    @Test func createTaskRejectsMalformedStartDate() async throws {
+        let (h, _, _) = try makeHandlers()
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("create_task", ["title": "x", "startDate": "nope"])
+        }
+    }
+
     @Test func createTaskAcceptsStartDate() async throws {
         let (h, _, _) = try makeHandlers()
         let start = ISO8601Date.string(Date(timeIntervalSince1970: 1000))
