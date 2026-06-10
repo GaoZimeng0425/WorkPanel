@@ -7,6 +7,7 @@ final class TodoTask {
     var title: String
     var notes: String
     var deadline: Date?
+    var startDate: Date?
     var priorityRaw: Int
     var tags: [String]
     var isCompleted: Bool

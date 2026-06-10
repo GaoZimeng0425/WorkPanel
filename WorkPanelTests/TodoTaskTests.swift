@@ -56,4 +56,12 @@ struct TodoTaskTests {
         #expect(!TodoTask(title: "逾期但强制不紧急", deadline: now.addingTimeInterval(-3600),
                           urgencyOverride: false).isUrgent(asOf: now))
     }
+
+    @Test func startDateDefaultsNilAndIsSettable() {
+        let t = TodoTask(title: "带开始")
+        #expect(t.startDate == nil)
+        let d = Date(timeIntervalSince1970: 1000)
+        t.startDate = d
+        #expect(t.startDate == d)
+    }
 }
