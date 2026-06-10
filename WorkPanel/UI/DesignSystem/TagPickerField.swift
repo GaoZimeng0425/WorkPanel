@@ -5,6 +5,8 @@ import SwiftUI
 struct TagPickerField: View {
     @Binding var selected: [String]
     let existing: [String]          // 已有标签全集(去重排序)
+    let onDelete: (String) -> Void  // 全局移除某标签(从所有任务里删除)
+    let onCreate: (String) -> Void  // 新建标签时登记进 store(立即持久化)
 
     @State private var showing = false
     @State private var filter = ""
@@ -52,7 +54,9 @@ struct TagPickerField: View {
                         row(title: "新建『\(trimmed)』", checked: false) { create() }
                     }
                     ForEach(matches, id: \.self) { tag in
-                        row(title: "#\(tag)", checked: selected.contains(tag)) { toggle(tag) }
+                        row(title: "#\(tag)", checked: selected.contains(tag),
+                            action: { toggle(tag) },
+                            onDelete: { onDelete(tag) })
                     }
                 }
             }
@@ -65,18 +69,30 @@ struct TagPickerField: View {
         .onDisappear { filter = "" }
     }
 
-    private func row(title: String, checked: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
-                Text(title).foregroundStyle(Theme.textPrimary)
-                Spacer()
-                if checked { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+    private func row(title: String, checked: Bool,
+                     action: @escaping () -> Void,
+                     onDelete: (() -> Void)? = nil) -> some View {
+        HStack(spacing: 6) {
+            Button(action: action) {
+                HStack {
+                    Text(title).foregroundStyle(Theme.textPrimary)
+                    Spacer()
+                    if checked { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                }
+                .font(.system(size: 12))
+                .contentShape(Rectangle())
             }
-            .font(.system(size: 12))
-            .padding(.horizontal, 9).padding(.vertical, 7)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            if let onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 9).padding(.vertical, 7)
     }
 
     private func toggle(_ tag: String) {
@@ -85,6 +101,7 @@ struct TagPickerField: View {
     }
     private func create() {
         guard !trimmed.isEmpty, !selected.contains(trimmed) else { return }
+        onCreate(trimmed)
         selected.append(trimmed)
         filter = ""
     }
