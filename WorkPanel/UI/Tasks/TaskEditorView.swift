@@ -262,7 +262,10 @@ struct TaskEditorView: View {
             .noirPickerPill()
         }
         .buttonStyle(.plain)
-        .popover(isPresented: $showingTimePicker, arrowEdge: .bottom) {
+        // 锚到按钮左下角(而非默认居中):摘要变长时按钮只向右生长,左缘不动,popover 不再晃动。
+        .popover(isPresented: $showingTimePicker,
+                 attachmentAnchor: .point(.bottomLeading),
+                 arrowEdge: .bottom) {
             timeRangePopover
         }
     }
