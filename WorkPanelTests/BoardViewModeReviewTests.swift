@@ -7,7 +7,8 @@ struct BoardViewModeReviewTests {
     }
 
     @Test func allCasesIncludesGantt() {
-        #expect(BoardViewMode.allCases.last == .gantt)
+        // 顺序刻意固定:甘特在今日与优先级之间。
+        #expect(BoardViewMode.allCases == [.kanban, .matrix, .today, .gantt, .priority, .review])
         #expect(BoardViewMode.gantt.label == "甘特")
         #expect(BoardViewMode(rawValue: "gantt") == .gantt)
     }
