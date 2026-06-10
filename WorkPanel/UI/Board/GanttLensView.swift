@@ -58,35 +58,37 @@ struct GanttLensView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     if scheduled.isEmpty && unscheduled.isEmpty {
                         emptyText("还没有任务")
-                    }
-                    HStack(alignment: .top, spacing: 0) {
-                        // 冻结名列
-                        VStack(spacing: rowGap) {
-                            ForEach(scheduled) { nameCell($0) }
-                        }
-                        .frame(width: nameW, alignment: .leading)
+                            .padding(.vertical, 60)
+                    } else {
+                        HStack(alignment: .top, spacing: 0) {
+                            // 冻结名列
+                            VStack(spacing: rowGap) {
+                                ForEach(scheduled) { nameCell($0) }
+                            }
+                            .frame(width: nameW, alignment: .leading)
 
-                        // 横向滚动的条网格
-                        ScrollView(.horizontal, showsIndicators: true) {
-                            ZStack(alignment: .topLeading) {
-                                gridLines(days: bounds.days, dayW: dayW)
-                                    .frame(width: contentW)
-                                VStack(spacing: rowGap) {
-                                    ForEach(scheduled) { row in
-                                        barLane(row, g: g, contentW: contentW)
+                            // 横向滚动的条网格
+                            ScrollView(.horizontal, showsIndicators: true) {
+                                ZStack(alignment: .topLeading) {
+                                    gridLines(days: bounds.days, dayW: dayW)
+                                        .frame(width: contentW)
+                                    VStack(spacing: rowGap) {
+                                        ForEach(scheduled) { row in
+                                            barLane(row, g: g, contentW: contentW)
+                                        }
                                     }
                                 }
+                                .frame(width: contentW, alignment: .topLeading)
                             }
-                            .frame(width: contentW, alignment: .topLeading)
+                            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
+                                scrollX = x
+                            }
                         }
-                        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
-                            scrollX = x
-                        }
-                    }
-                    .padding(.top, rowGap)
+                        .padding(.top, rowGap)
 
-                    if !unscheduled.isEmpty {
-                        unscheduledSection(unscheduled)
+                        if !unscheduled.isEmpty {
+                            unscheduledSection(unscheduled)
+                        }
                     }
                 }
             }
