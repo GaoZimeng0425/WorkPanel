@@ -99,4 +99,22 @@ struct SyncDocumentTests {
         dto.kind = "unknown_future_kind"
         #expect(dto.makeModel().kind == .task)
     }
+
+    @Test func taskDTORoundTripsStartDate() throws {
+        let t = TodoTask(title: "带范围")
+        t.startDate = Date(timeIntervalSince1970: 60)
+        t.deadline = Date(timeIntervalSince1970: 100)
+        let back = try SyncDocument.decoder.decode(
+            SyncTaskDTO.self, from: try SyncDocument.encoder.encode(SyncTaskDTO(t)))
+        #expect(back.startDate == Date(timeIntervalSince1970: 60))
+    }
+
+    @Test func taskDTOMissingStartDateDecodesAsNil() throws {
+        // 模拟旧版本文档:JSON 里没有 startDate 键 → 解码回 nil
+        let t = TodoTask(title: "无开始")           // startDate 为 nil
+        let data = try SyncDocument.encoder.encode(SyncTaskDTO(t))
+        #expect(!(String(data: data, encoding: .utf8) ?? "").contains("startDate"))
+        let back = try SyncDocument.decoder.decode(SyncTaskDTO.self, from: data)
+        #expect(back.startDate == nil)
+    }
 }

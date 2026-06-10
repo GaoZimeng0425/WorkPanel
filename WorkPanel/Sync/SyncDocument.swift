@@ -5,6 +5,7 @@ struct SyncTaskDTO: Codable {
     var title: String
     var notes: String
     var deadline: Date?
+    var startDate: Date?
     var priorityRaw: Int
     var tags: [String]
     var isCompleted: Bool
@@ -19,7 +20,7 @@ struct SyncTaskDTO: Codable {
     var modifiedAt: Date
 
     init(_ t: TodoTask) {
-        id = t.id; title = t.title; notes = t.notes; deadline = t.deadline
+        id = t.id; title = t.title; notes = t.notes; deadline = t.deadline; startDate = t.startDate
         priorityRaw = t.priorityRaw; tags = t.tags; isCompleted = t.isCompleted
         completedAt = t.completedAt; createdAt = t.createdAt; snoozedUntil = t.snoozedUntil
         recurrenceRaw = t.recurrenceRaw; columnID = t.columnID; boardOrder = t.boardOrder
@@ -29,7 +30,7 @@ struct SyncTaskDTO: Codable {
     func makeModel() -> TodoTask { let t = TodoTask(title: title); apply(to: t); return t }
 
     func apply(to t: TodoTask) {
-        t.id = id; t.title = title; t.notes = notes; t.deadline = deadline
+        t.id = id; t.title = title; t.notes = notes; t.deadline = deadline; t.startDate = startDate
         t.priorityRaw = priorityRaw; t.tags = tags; t.isCompleted = isCompleted
         t.completedAt = completedAt; t.createdAt = createdAt; t.snoozedUntil = snoozedUntil
         t.recurrenceRaw = recurrenceRaw; t.columnID = columnID; t.boardOrder = boardOrder
