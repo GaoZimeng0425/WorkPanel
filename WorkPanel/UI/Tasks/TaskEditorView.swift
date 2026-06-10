@@ -17,6 +17,7 @@ struct TaskEditorView: View {
     @Environment(\.modelContext) private var context
     private var todoStore: TodoStore { TodoStore(context: context) }
     private var boardStore: BoardStore { BoardStore(context: context) }
+    private var tagStore: TagStore { TagStore(context: context) }
     private let scheduler = ReminderScheduler()
 
     @State private var text: String
@@ -33,6 +34,7 @@ struct TaskEditorView: View {
 
     @Query(sort: \BoardColumn.order) private var columns: [BoardColumn]
     @Query private var allTasks: [TodoTask]
+    @Query(sort: \Tag.order) private var tagEntities: [Tag]
 
     init(mode: Mode, onClose: @escaping () -> Void) {
         self.mode = mode
@@ -66,7 +68,7 @@ struct TaskEditorView: View {
     }
 
     private var allTags: [String] {
-        Array(Set(allTasks.flatMap(\.tags))).sorted()
+        tagEntities.map(\.name)
     }
 
     private var isEditing: Bool {
@@ -244,7 +246,18 @@ struct TaskEditorView: View {
             controlRow("时间") { timeRangeControl }
             controlRow("状态") { statusMenu }
             controlRow("标签") {
-                TagPickerField(selected: $selectedTags, existing: allTags)
+                TagPickerField(
+                    selected: $selectedTags,
+                    existing: allTags,
+                    onDelete: { tag in
+                        tagStore.delete(tag)
+                        selectedTags.removeAll { $0 == tag }
+                    },
+                    onCreate: { tag in
+                        tagStore.register(tag)
+                        try? context.saveTracking()
+                    }
+                )
             }
         }
     }
@@ -448,6 +461,7 @@ struct TaskEditorView: View {
         }
         task.startDate = startDate
         boardStore.setColumn(task, to: columnID)
+        tagStore.register(names: fields.tags)
         try? context.saveTracking()
         Task { await scheduler.schedule(for: task) }
         onClose()
