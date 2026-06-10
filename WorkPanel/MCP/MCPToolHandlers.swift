@@ -24,12 +24,14 @@ final class MCPToolHandlers {
     private let context: ModelContext
     private let todo: TodoStore
     private let board: BoardStore
+    private let tags: TagStore
     private let scheduler: ReminderScheduler
 
     init(context: ModelContext, scheduler: ReminderScheduler = ReminderScheduler()) {
         self.context = context
         self.todo = TodoStore(context: context)
         self.board = BoardStore(context: context)
+        self.tags = TagStore(context: context)
         self.scheduler = scheduler
     }
 
@@ -119,6 +121,7 @@ final class MCPToolHandlers {
         let task = todo.add(parsed, notes: notes)
         task.startDate = startDate
         if let targetColumn { board.setColumn(task, to: targetColumn) }
+        tags.register(names: task.tags)
         try context.saveTracking()
         await scheduler.schedule(for: task)
         return try encode(dto(task))
@@ -140,6 +143,7 @@ final class MCPToolHandlers {
         }
         if let v = args["priority"]?.stringValue, let p = Priority(apiName: v) { task.priority = p }
         if let arr = args["tags"]?.arrayValue { task.tags = arr.compactMap(\.stringValue) }
+        tags.register(names: task.tags)
         try context.saveTracking()
         scheduler.cancel(for: task)
         await scheduler.schedule(for: task)
