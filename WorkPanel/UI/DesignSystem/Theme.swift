@@ -43,6 +43,21 @@ enum Theme {
     nonisolated static let recurrence = Color(red: 0.73, green: 0.55, blue: 1.0)  // #B98BFF
     nonisolated static let success    = Color(red: 0.36, green: 0.76, blue: 0.43) // #5BC16E
 
+    // MARK: 看板列调色板(甘特图按列着色;列 order 取模索引)
+    nonisolated static let columnPalette: [Color] = [
+        Color(red: 0.30, green: 0.65, blue: 1.0),  // 蓝
+        Color(red: 0.36, green: 0.76, blue: 0.43),  // 绿
+        Color(red: 1.0,  green: 0.70, blue: 0.25),  // 琥珀
+        Color(red: 0.73, green: 0.55, blue: 1.0),  // 紫
+        Color(red: 1.0,  green: 0.45, blue: 0.55),  // 粉
+        Color(red: 0.40, green: 0.80, blue: 0.80),  // 青
+    ]
+
+    nonisolated static func columnColor(order: Int) -> Color {
+        let n = columnPalette.count
+        return columnPalette[((order % n) + n) % n]
+    }
+
     // MARK: 文案
     nonisolated static func priorityLabel(_ p: Priority) -> String {
         switch p { case .high: "高"; case .medium: "中"; case .low: "低" }
