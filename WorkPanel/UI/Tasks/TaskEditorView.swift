@@ -27,6 +27,8 @@ struct TaskEditorView: View {
     @State private var showingDatePicker = false
     @State private var showingExpandMenu = false
     @State private var deadline: Date?
+    @State private var startDate: Date?
+    @State private var showingStartPicker = false
     @State private var expandPrompt: AIPrompt?
     private let base: ParsedInput
 
@@ -46,6 +48,7 @@ struct TaskEditorView: View {
             _selectedTags = State(initialValue: [])
             _columnID = State(initialValue: columnID)
             _deadline = State(initialValue: nil)
+            _startDate = State(initialValue: nil)
         case .edit(let task):
             _text = State(initialValue: task.notes.isEmpty ? task.title : task.title + "\n" + task.notes)
             var b = ParsedInput()
@@ -59,6 +62,7 @@ struct TaskEditorView: View {
             _selectedTags = State(initialValue: task.tags)
             _columnID = State(initialValue: task.columnID)
             _deadline = State(initialValue: task.deadline)
+            _startDate = State(initialValue: task.startDate)
         }
     }
 
@@ -238,6 +242,7 @@ struct TaskEditorView: View {
                     selection: $priority
                 )
             }
+            controlRow("开始") { startControl }
             controlRow("时间") { deadlineControl }
             controlRow("状态") { statusMenu }
             controlRow("标签") {
@@ -291,6 +296,58 @@ struct TaskEditorView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "calendar.badge.plus")
                     Text("添加时间")
+                }
+                .foregroundStyle(Theme.textTertiary)
+                .noirPickerPill()
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var startBinding: Binding<Date> {
+        Binding(get: { startDate ?? defaultStart() }, set: { startDate = $0 })
+    }
+
+    private func defaultStart() -> Date {
+        let cal = Calendar.current
+        let hour = cal.dateComponents([.year, .month, .day, .hour], from: .now)
+        return cal.date(from: hour) ?? .now
+    }
+
+    @ViewBuilder
+    private var startControl: some View {
+        if startDate != nil {
+            HStack(spacing: 8) {
+                Button { showingStartPicker = true } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "calendar").font(.system(size: 10))
+                        Text(startBinding.wrappedValue.formatted(date: .abbreviated, time: .shortened))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .foregroundStyle(Theme.textPrimary)
+                    .noirPickerPill()
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showingStartPicker, arrowEdge: .bottom) {
+                    NoirDatePicker(date: startBinding)
+                        .padding(12)
+                        .frame(width: 250)
+                        .background(Theme.panelBottom)
+                        .preferredColorScheme(.dark)
+                }
+                Button { startDate = nil } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Theme.textTertiary)
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            Button { startDate = defaultStart() } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar.badge.plus")
+                    Text("添加开始")
                 }
                 .foregroundStyle(Theme.textTertiary)
                 .noirPickerPill()
@@ -435,6 +492,7 @@ struct TaskEditorView: View {
             existing.urgencyOverride = fields.urgencyOverride
             task = existing
         }
+        task.startDate = startDate
         boardStore.setColumn(task, to: columnID)
         try? context.saveTracking()
         Task { await scheduler.schedule(for: task) }
