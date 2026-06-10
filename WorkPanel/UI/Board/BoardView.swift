@@ -33,7 +33,9 @@ struct BoardView: View {
         )
         .preferredColorScheme(.dark)
         .onAppear {
-            store.seedDefaultColumnsIfNeeded(); try? context.saveTracking()
+            store.seedDefaultColumnsIfNeeded()
+            TagStore(context: context).seedFromTasksIfNeeded()
+            try? context.saveTracking()
             let last = lastPlannedDay == 0 ? nil : Date(timeIntervalSinceReferenceDate: lastPlannedDay)
             if PlanStore.needsPlanning(lastPlanned: last, now: .now, calendar: .current) {
                 showPlanning = true
