@@ -59,6 +59,7 @@ struct BoardView: View {
         case .today:    TodayLensView(onPlan: { showPlanning = true })
         case .priority: PriorityLensView()
         case .review:   ReviewLensView()
+        case .gantt:    GanttLensView()
         }
     }
 
@@ -115,6 +116,7 @@ struct BoardView: View {
         case .today:    "calendar"
         case .priority: "flag"
         case .review:   "chart.bar"
+        case .gantt:    "chart.bar.xaxis"
         }
     }
 }
