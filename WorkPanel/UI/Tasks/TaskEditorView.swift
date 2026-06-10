@@ -25,6 +25,7 @@ struct TaskEditorView: View {
     @State private var columnID: UUID?
     @State private var showingStatusPicker = false
     @State private var showingTimePicker = false
+    @State private var timeButtonHeight: CGFloat = 26
     @State private var showingExpandMenu = false
     @State private var deadline: Date?
     @State private var startDate: Date?
@@ -260,11 +261,17 @@ struct TaskEditorView: View {
                 Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
             }
             .noirPickerPill()
+            .background(
+                GeometryReader { g in
+                    Color.clear.onAppear { timeButtonHeight = g.size.height }
+                }
+            )
         }
         .buttonStyle(.plain)
-        // 锚到按钮左下角(而非默认居中):摘要变长时按钮只向右生长,左缘不动,popover 不再晃动。
+        // 锚到“钉在起始、高度=按钮”的细长矩形:箭头水平固定在起始、垂直落在按钮底边。
+        // 摘要变长时按钮只向右生长,锚点不动,popover 不再晃动。
         .popover(isPresented: $showingTimePicker,
-                 attachmentAnchor: .point(.bottomLeading),
+                 attachmentAnchor: .rect(.rect(CGRect(x: 14, y: 0, width: 1, height: timeButtonHeight))),
                  arrowEdge: .bottom) {
             timeRangePopover
         }
