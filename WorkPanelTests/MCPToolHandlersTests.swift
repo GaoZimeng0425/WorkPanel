@@ -235,4 +235,24 @@ struct MCPToolHandlersTests {
             _ = try await h.call("create_task", ["title": "x", "deadline": "nope"])
         }
     }
+
+    @Test func createTaskAcceptsStartDate() async throws {
+        let (h, _, _) = try makeHandlers()
+        let start = ISO8601Date.string(Date(timeIntervalSince1970: 1000))
+        let json = try await h.call("create_task", ["title": "带开始", "startDate": .string(start)])
+        #expect(try decodeTask(json).startDate == start)
+    }
+
+    @Test func updateTaskSetsAndClearsStartDate() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "改开始")
+        ctx.insert(t); try ctx.save()
+
+        let start = ISO8601Date.string(Date(timeIntervalSince1970: 2000))
+        let set = try await h.call("update_task", ["id": .string(t.id.uuidString), "startDate": .string(start)])
+        #expect(try decodeTask(set).startDate == start)
+
+        let cleared = try await h.call("update_task", ["id": .string(t.id.uuidString), "startDate": .null])
+        #expect(try decodeTask(cleared).startDate == nil)
+    }
 }

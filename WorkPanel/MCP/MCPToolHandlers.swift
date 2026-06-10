@@ -99,6 +99,13 @@ final class MCPToolHandlers {
             }
             parsed.deadline = date
         }
+        var startDate: Date? = nil
+        if args.contains("startDate"), args["startDate"]?.isNull != true {
+            guard let s = args["startDate"]?.stringValue, let date = ISO8601Date.date(s) else {
+                throw ToolError.badArgument("Invalid 'startDate'")
+            }
+            startDate = date
+        }
         // validate columnID (if provided) before mutating anything
         var targetColumn: UUID? = nil
         if let s = args["columnID"]?.stringValue {
@@ -110,6 +117,7 @@ final class MCPToolHandlers {
         }
         let notes = args["notes"]?.stringValue ?? ""
         let task = todo.add(parsed, notes: notes)
+        task.startDate = startDate
         if let targetColumn { board.setColumn(task, to: targetColumn) }
         try context.saveTracking()
         await scheduler.schedule(for: task)
@@ -124,6 +132,11 @@ final class MCPToolHandlers {
             if args["deadline"]?.isNull == true { task.deadline = nil }
             else if let s = args["deadline"]?.stringValue, let d = ISO8601Date.date(s) { task.deadline = d }
             else { throw ToolError.badArgument("Invalid 'deadline'") }
+        }
+        if args.contains("startDate") {
+            if args["startDate"]?.isNull == true { task.startDate = nil }
+            else if let s = args["startDate"]?.stringValue, let d = ISO8601Date.date(s) { task.startDate = d }
+            else { throw ToolError.badArgument("Invalid 'startDate'") }
         }
         if let v = args["priority"]?.stringValue, let p = Priority(apiName: v) { task.priority = p }
         if let arr = args["tags"]?.arrayValue { task.tags = arr.compactMap(\.stringValue) }

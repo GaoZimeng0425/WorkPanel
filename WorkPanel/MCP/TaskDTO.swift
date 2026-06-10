@@ -35,6 +35,7 @@ struct TaskDTO: Codable, Equatable {
     let title: String
     let notes: String
     let deadline: String?
+    let startDate: String?
     let priority: String
     let tags: [String]
     let isCompleted: Bool
@@ -49,6 +50,7 @@ struct TaskDTO: Codable, Equatable {
         title = task.title
         notes = task.notes
         deadline = task.deadline.map(ISO8601Date.string)
+        startDate = task.startDate.map(ISO8601Date.string)
         priority = task.priority.apiName
         tags = task.tags
         isCompleted = task.isCompleted
