@@ -13,6 +13,17 @@ enum AppSettings {
         static let mcpEnabled = "mcpEnabled"
         static let mcpPort = "mcpPort"
         static let mcpToken = "mcpToken"
+        static let boardHeight = "boardHeight"   // Double: 看板像素高度,360 为最小/默认
+        static let aiBaseURL = "aiBaseURL"
+        static let aiModel = "aiModel"
+        static let aiAPIKey = "aiAPIKey"   // 明文,与 mcpToken 一致
+        static let aiPrompts = "aiPrompts" // JSON 编码的 [AIPrompt]
+        static let lanSyncEnabled = "lanSyncEnabled"
+        static let lanSyncPort = "lanSyncPort"
+        static let lanSyncPairingCode = "lanSyncPairingCode"
+        static let lanSyncIntervalSeconds = "lanSyncIntervalSeconds"
+        static let syncInstanceID = "syncInstanceID"
+        static let lanSyncDeviceName = "lanSyncDeviceName"
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
@@ -25,6 +36,9 @@ enum AppSettings {
             Key.boardViewMode: BoardViewMode.kanban.rawValue,
             Key.mcpEnabled: false,
             Key.mcpPort: 8787,
+            Key.lanSyncEnabled: false,
+            Key.lanSyncPort: 8788,
+            Key.lanSyncIntervalSeconds: 30,
         ])
     }
 
@@ -52,6 +66,49 @@ enum AppSettings {
         let t = UUID().uuidString
         UserDefaults.standard.set(t, forKey: Key.mcpToken)
         return t
+    }
+    static var boardHeight: CGFloat {
+        let h = UserDefaults.standard.double(forKey: Key.boardHeight)
+        return h == 0 ? 360 : CGFloat(h)
+    }
+    static var aiBaseURL: String {
+        UserDefaults.standard.string(forKey: Key.aiBaseURL) ?? ""
+    }
+    static var aiModel: String {
+        UserDefaults.standard.string(forKey: Key.aiModel) ?? ""
+    }
+    static var aiAPIKey: String {
+        UserDefaults.standard.string(forKey: Key.aiAPIKey) ?? ""
+    }
+    /// 三项配置齐全才算可用——AI 入口的显示门槛,与 AIRequest.build 的校验一致。
+    static var aiConfigured: Bool {
+        !aiBaseURL.isEmpty && !aiModel.isEmpty && !aiAPIKey.isEmpty
+    }
+    static var lanSyncEnabled: Bool {
+        UserDefaults.standard.bool(forKey: Key.lanSyncEnabled)
+    }
+    static var lanSyncPort: Int {
+        let p = UserDefaults.standard.integer(forKey: Key.lanSyncPort)
+        return p == 0 ? 8788 : p
+    }
+    static var lanSyncIntervalSeconds: Int {
+        let s = UserDefaults.standard.integer(forKey: Key.lanSyncIntervalSeconds)
+        return s == 0 ? 30 : s
+    }
+    static var lanSyncPairingCode: String {
+        UserDefaults.standard.string(forKey: Key.lanSyncPairingCode) ?? ""
+    }
+    /// 本机稳定身份,用于 Bonjour 服务名与自身过滤;无则生成一次(与 mcpToken 同模式)。
+    static var syncInstanceID: String {
+        if let s = UserDefaults.standard.string(forKey: Key.syncInstanceID), !s.isEmpty { return s }
+        let s = UUID().uuidString
+        UserDefaults.standard.set(s, forKey: Key.syncInstanceID)
+        return s
+    }
+    /// 展示给对端的设备名,默认取本机名。
+    static var lanSyncDeviceName: String {
+        if let n = UserDefaults.standard.string(forKey: Key.lanSyncDeviceName), !n.isEmpty { return n }
+        return Host.current().localizedName ?? "Mac"
     }
 }
 

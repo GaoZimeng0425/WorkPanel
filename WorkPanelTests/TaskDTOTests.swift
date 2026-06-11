@@ -48,4 +48,15 @@ struct TaskDTOTests {
         #expect(ISO8601Date.date("2026-06-03T09:00:00Z") != nil)
         #expect(ISO8601Date.date("not-a-date") == nil)
     }
+
+    @Test func dtoIncludesStartDate() {
+        let start = Date(timeIntervalSince1970: 1000)
+        let task = TodoTask(title: "带开始")
+        task.startDate = start
+        let dto = TaskDTO(task, columnName: nil)
+        #expect(dto.startDate == ISO8601Date.string(start))
+
+        let none = TaskDTO(TodoTask(title: "无开始"), columnName: nil)
+        #expect(none.startDate == nil)
+    }
 }

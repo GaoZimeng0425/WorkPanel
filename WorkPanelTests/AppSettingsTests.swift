@@ -30,4 +30,16 @@ struct AppSettingsTests {
         UserDefaults.standard.removeObject(forKey: AppSettings.Key.mcpPort)
         #expect(AppSettings.mcpPort == 8787)
     }
+
+    @Test func boardHeightDefaultsTo360() {
+        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.boardHeight) }
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.boardHeight)
+        #expect(AppSettings.boardHeight == 360)
+    }
+
+    @Test func boardHeightPersistsSetValue() {
+        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.boardHeight) }
+        UserDefaults.standard.set(Double(640), forKey: AppSettings.Key.boardHeight)
+        #expect(AppSettings.boardHeight == 640)
+    }
 }

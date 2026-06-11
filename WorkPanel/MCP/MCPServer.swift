@@ -5,6 +5,8 @@ import Network
 extension Notification.Name {
     /// Posted by SettingsView when MCP enable/port changes so AppDelegate can restart the server.
     static let mcpSettingsChanged = Notification.Name("mcpSettingsChanged")
+    /// Posted by SettingsView when LAN-sync enable/config changes so AppDelegate can restart the coordinator.
+    static let lanSyncSettingsChanged = Notification.Name("lanSyncSettingsChanged")
 }
 
 @MainActor

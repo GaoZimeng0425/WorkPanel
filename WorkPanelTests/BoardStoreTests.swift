@@ -7,7 +7,7 @@ import SwiftData
 struct BoardStoreTests {
     private func makeStore() throws -> BoardStore {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: TodoTask.self, BoardColumn.self, configurations: config)
+        let container = try ModelContainer(for: TodoTask.self, BoardColumn.self, Tombstone.self, configurations: config)
         return BoardStore(context: ModelContext(container))
     }
 
@@ -177,5 +177,29 @@ struct BoardStoreTests {
         store.context.insert(t)
         store.setPriority(t, to: .high)
         #expect(t.priority == .high)
+    }
+
+    @Test func deleteCreatesColumnTombstone() throws {
+        let store = try makeStore()
+        let a = store.addColumn(name: "A")
+        _ = store.addColumn(name: "B")
+        try store.context.save()
+        store.delete(a, now: Date(timeIntervalSince1970: 100))
+        try store.context.save()
+        let tombs = try store.context.fetch(FetchDescriptor<Tombstone>())
+        #expect(tombs.count == 1)
+        #expect(tombs.first?.id == a.id)
+        #expect(tombs.first?.kind == .column)
+        #expect(tombs.first?.deletedAt == Date(timeIntervalSince1970: 100))
+    }
+
+    @Test func deleteLastColumnCreatesNoTombstone() throws {
+        let store = try makeStore()
+        let only = store.addColumn(name: "唯一")
+        try store.context.save()
+        store.delete(only)
+        try store.context.save()
+        #expect(try store.context.fetch(FetchDescriptor<BoardColumn>()).count == 1)
+        #expect(try store.context.fetch(FetchDescriptor<Tombstone>()).isEmpty)
     }
 }

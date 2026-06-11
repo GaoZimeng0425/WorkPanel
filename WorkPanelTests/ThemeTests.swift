@@ -21,4 +21,13 @@ struct ThemeTests {
         #expect(Theme.priority(.medium) == Color(red: 1.0, green: 0.70, blue: 0.25))
         #expect(Theme.priority(.low)    == Color.white.opacity(0.42))
     }
+
+    @Test func columnColorWrapsByModulo() {
+        let n = Theme.columnPalette.count
+        #expect(n >= 4)
+        #expect(Theme.columnColor(order: 0) == Theme.columnPalette[0])
+        #expect(Theme.columnColor(order: n) == Theme.columnPalette[0])       // 取模回绕
+        #expect(Theme.columnColor(order: n + 1) == Theme.columnPalette[1])
+        #expect(Theme.columnColor(order: -1) == Theme.columnPalette[n - 1])  // 负数也安全
+    }
 }

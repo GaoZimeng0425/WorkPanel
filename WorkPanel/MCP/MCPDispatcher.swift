@@ -90,15 +90,17 @@ struct MCPDispatcher {
             "title": ["type": "string"],
             "notes": ["type": "string"],
             "deadline": ["type": "string", "description": "ISO-8601 datetime"],
+            "startDate": ["type": "string", "description": "ISO-8601 datetime"],
             "priority": ["type": "string", "enum": ["low", "medium", "high"]],
             "tags": ["type": "array", "items": ["type": "string"]],
             "columnID": ["type": "string"],
         ], required: ["title"]),
-        toolEntry("update_task", "Update fields of an existing task; only provided fields change. Send deadline:null to clear it.", [
+        toolEntry("update_task", "Update fields of an existing task; only provided fields change. Send deadline:null or startDate:null to clear them.", [
             "id": ["type": "string"],
             "title": ["type": "string"],
             "notes": ["type": "string"],
             "deadline": ["type": ["string", "null"], "description": "ISO-8601 datetime or null"],
+            "startDate": ["type": ["string", "null"], "description": "ISO-8601 datetime or null"],
             "priority": ["type": "string", "enum": ["low", "medium", "high"]],
             "tags": ["type": "array", "items": ["type": "string"]],
         ], required: ["id"]),

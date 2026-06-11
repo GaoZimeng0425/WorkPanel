@@ -24,12 +24,14 @@ final class MCPToolHandlers {
     private let context: ModelContext
     private let todo: TodoStore
     private let board: BoardStore
+    private let tags: TagStore
     private let scheduler: ReminderScheduler
 
     init(context: ModelContext, scheduler: ReminderScheduler = ReminderScheduler()) {
         self.context = context
         self.todo = TodoStore(context: context)
         self.board = BoardStore(context: context)
+        self.tags = TagStore(context: context)
         self.scheduler = scheduler
     }
 
@@ -99,6 +101,13 @@ final class MCPToolHandlers {
             }
             parsed.deadline = date
         }
+        var startDate: Date? = nil
+        if args.contains("startDate"), args["startDate"]?.isNull != true {
+            guard let s = args["startDate"]?.stringValue, let date = ISO8601Date.date(s) else {
+                throw ToolError.badArgument("Invalid 'startDate'")
+            }
+            startDate = date
+        }
         // validate columnID (if provided) before mutating anything
         var targetColumn: UUID? = nil
         if let s = args["columnID"]?.stringValue {
@@ -110,8 +119,10 @@ final class MCPToolHandlers {
         }
         let notes = args["notes"]?.stringValue ?? ""
         let task = todo.add(parsed, notes: notes)
+        task.startDate = startDate
         if let targetColumn { board.setColumn(task, to: targetColumn) }
-        try context.save()
+        tags.register(names: task.tags)
+        try context.saveTracking()
         await scheduler.schedule(for: task)
         return try encode(dto(task))
     }
@@ -125,9 +136,15 @@ final class MCPToolHandlers {
             else if let s = args["deadline"]?.stringValue, let d = ISO8601Date.date(s) { task.deadline = d }
             else { throw ToolError.badArgument("Invalid 'deadline'") }
         }
+        if args.contains("startDate") {
+            if args["startDate"]?.isNull == true { task.startDate = nil }
+            else if let s = args["startDate"]?.stringValue, let d = ISO8601Date.date(s) { task.startDate = d }
+            else { throw ToolError.badArgument("Invalid 'startDate'") }
+        }
         if let v = args["priority"]?.stringValue, let p = Priority(apiName: v) { task.priority = p }
         if let arr = args["tags"]?.arrayValue { task.tags = arr.compactMap(\.stringValue) }
-        try context.save()
+        tags.register(names: task.tags)
+        try context.saveTracking()
         scheduler.cancel(for: task)
         await scheduler.schedule(for: task)
         return try encode(dto(task))
@@ -138,7 +155,7 @@ final class MCPToolHandlers {
     private func completeTask(_ args: JSONValue) async throws -> String {
         let task = try fetchTask(requireID(args))
         let next = todo.complete(task)
-        try context.save()
+        try context.saveTracking()
         scheduler.cancel(for: task)
         if let next { await scheduler.schedule(for: next) }
         return try encode(CompleteResult(task: dto(task), next: next.map(dto)))
@@ -147,7 +164,7 @@ final class MCPToolHandlers {
     private func reopenTask(_ args: JSONValue) throws -> String {
         let task = try fetchTask(requireID(args))
         todo.reopen(task)
-        try context.save()
+        try context.saveTracking()
         return try encode(dto(task))
     }
 
@@ -157,7 +174,7 @@ final class MCPToolHandlers {
         }
         let task = try fetchTask(requireID(args))
         todo.snooze(task, until: date)
-        try context.save()
+        try context.saveTracking()
         return try encode(dto(task))
     }
 
@@ -166,7 +183,7 @@ final class MCPToolHandlers {
         let task = try fetchTask(id)
         scheduler.cancel(for: task)
         todo.delete(task)
-        try context.save()
+        try context.saveTracking()
         return try encode(["deleted": id.uuidString])
     }
 
@@ -186,7 +203,7 @@ final class MCPToolHandlers {
         } else {
             throw ToolError.badArgument("Missing 'columnID'")
         }
-        try context.save()
+        try context.saveTracking()
         return try encode(dto(task))
     }
 
