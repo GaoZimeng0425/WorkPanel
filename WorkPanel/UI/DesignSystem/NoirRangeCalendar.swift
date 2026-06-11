@@ -75,13 +75,16 @@ struct NoirRangeCalendar: View {
             return d >= cal.startOfDay(for: s) && d <= cal.startOfDay(for: e)
         }()
         let endpoint = isStart || isEnd
+        let isToday = cal.isDateInToday(day)
         return Button { pick(day) } label: {
             Text("\(cal.component(.day, from: day))")
                 .font(.system(size: 12, weight: endpoint ? .bold : .regular))
                 .foregroundStyle(endpoint ? Color.black : (inRange ? Theme.accentText : Theme.textSecondary))
                 .frame(maxWidth: .infinity).frame(height: 26)
                 .background(
-                    endpoint ? Theme.accent : (inRange ? Theme.accentSoft : Color.clear),
+                    endpoint ? Theme.accent
+                             : (inRange ? Theme.accentSoft
+                                        : (isToday ? Theme.surfaceEmphasis : Color.clear)),
                     in: RoundedRectangle(cornerRadius: 6, style: .continuous)
                 )
         }
