@@ -30,7 +30,9 @@ struct TaskCardView<Trailing: View>: View {
 
                 HStack(spacing: 6) {
                     if let d = task.deadline {
-                        Text(d.formatted(date: .omitted, time: .shortened))
+                        Text(Calendar.current.isDateInToday(d)
+                             ? d.formatted(date: .omitted, time: .shortened)
+                             : d.formatted(.dateTime.month().day()))
                             .noirBadge(d < .now ? Theme.priority(.high) : Theme.deadline)
                             .lineLimit(1)
                     }
