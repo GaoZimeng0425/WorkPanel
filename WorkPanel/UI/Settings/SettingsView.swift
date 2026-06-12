@@ -96,6 +96,12 @@ struct SettingsView: View {
 
         例如在 Claude Code 中可执行:
         \(mcpAddCommand)
+
+        接入后你可以增删改查任务、在看板列间移动任务。任务字段包括:\
+        标题 (title)、备注 (notes)、开始日期 (startDate)、截止日期 (deadline)、\
+        优先级 (priority)、标签 (tags)、重复规则 (recurrence)、紧急标记 (urgent)、\
+        所属看板列 (columnID),以及完成、重开、推迟 (snooze) 等状态操作。\
+        list_tasks 支持按完成状态、看板列、标签、优先级、startAfter / dueBefore 过滤。
         """
     }
 
