@@ -83,9 +83,12 @@ struct TaskEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(isEditing ? "编辑任务" : "新建任务")
+                let headerTitle = resolved.fields.title.trimmingCharacters(in: .whitespaces)
+                Text(headerTitle.isEmpty ? (isEditing ? "编辑任务" : "新建任务") : headerTitle)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Spacer()
                 if AppSettings.aiConfigured {
                     let singleTaskPrompts = AIPromptStore.load().filter { $0.shape == .singleTask }
