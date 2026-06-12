@@ -85,6 +85,20 @@ struct SettingsView: View {
         """
     }
 
+    /// 直接粘贴给 AI Agent 的自然语言提示,让它自行完成 MCP 接入。
+    private var mcpAgentPrompt: String {
+        """
+        请帮我接入一个名为 workpanel 的本地 MCP 服务器(用于管理我的任务和看板)。\
+        请根据我正在使用的 AI 工具,用下面的连接信息完成添加:
+        - 传输方式 (transport): http
+        - 地址 (url): \(mcpURL)
+        - 请求头 (headers): Authorization: Bearer \(mcpToken)
+
+        例如在 Claude Code 中可执行:
+        \(mcpAddCommand)
+        """
+    }
+
     private func copy(_ string: String, notice: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
@@ -395,13 +409,19 @@ struct SettingsView: View {
                         .buttonStyle(NoirPillButtonStyle())
                 }
                 divider
-                row("一键复制设置", systemImage: "doc.on.doc") {
-                    HStack(spacing: 8) {
-                        Button("复制命令") { copy(mcpAddCommand, notice: "已复制注册命令") }
-                            .buttonStyle(NoirPillButtonStyle())
-                        Button("复制 JSON") { copy(mcpJSONConfig, notice: "已复制 JSON 配置") }
-                            .buttonStyle(NoirPillButtonStyle())
-                    }
+                row("发给 AI 自动接入", systemImage: "sparkles") {
+                    Button("复制提示词") { copy(mcpAgentPrompt, notice: "已复制 AI 提示词") }
+                        .buttonStyle(NoirPillButtonStyle())
+                }
+                divider
+                row("注册命令(Claude Code)", systemImage: "terminal") {
+                    Button("复制") { copy(mcpAddCommand, notice: "已复制注册命令") }
+                        .buttonStyle(NoirPillButtonStyle())
+                }
+                divider
+                row("配置文件(.mcp.json)", systemImage: "curlybraces") {
+                    Button("复制") { copy(mcpJSONConfig, notice: "已复制 JSON 配置") }
+                        .buttonStyle(NoirPillButtonStyle())
                 }
             }
     }
