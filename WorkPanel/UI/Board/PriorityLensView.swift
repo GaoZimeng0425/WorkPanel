@@ -5,11 +5,12 @@ import SwiftData
 struct PriorityLensView: View {
     @Environment(\.modelContext) private var context
     @Query private var tasks: [TodoTask]
+    @Environment(BoardFilter.self) private var filter
 
     private var store: BoardStore { BoardStore(context: context) }
 
     private func items(_ p: Priority) -> [TodoTask] {
-        tasks.filter { !$0.isCompleted && $0.priority == p }
+        filter.apply(tasks).filter { !$0.isCompleted && $0.priority == p }
              .sorted { $0.boardOrder < $1.boardOrder }
     }
 

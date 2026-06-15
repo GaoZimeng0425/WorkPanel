@@ -8,11 +8,12 @@ struct TodayLensView: View {
 
     @Environment(\.modelContext) private var context
     @Query private var tasks: [TodoTask]
+    @Environment(BoardFilter.self) private var filter
 
     private var store: PlanStore { PlanStore(context: context) }
     private var now: Date { .now }
 
-    private var committed: [TodoTask] { store.committedTasks(on: now) }
+    private var committed: [TodoTask] { filter.apply(store.committedTasks(on: now)) }
     private var completedCount: Int { committed.filter(\.isCompleted).count }
 
     /// 今天到期/逾期但不在承诺集里的活动任务数。

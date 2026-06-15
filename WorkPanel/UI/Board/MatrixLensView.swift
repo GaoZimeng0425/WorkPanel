@@ -5,8 +5,9 @@ import SwiftData
 /// 象限标题已自述两轴(如「重要 · 紧急」),故不再单独画边轴标签。
 struct MatrixLensView: View {
     @Query private var tasks: [TodoTask]
+    @Environment(BoardFilter.self) private var filter
 
-    private var active: [TodoTask] { tasks.filter { !$0.isCompleted } }
+    private var active: [TodoTask] { filter.apply(tasks).filter { !$0.isCompleted } }
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
 
