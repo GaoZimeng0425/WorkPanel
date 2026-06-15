@@ -10,6 +10,8 @@ struct BoardView: View {
     @AppStorage(AppSettings.Key.boardViewMode) private var modeRaw = BoardViewMode.kanban.rawValue
     @AppStorage(AppSettings.Key.lastPlannedDay) private var lastPlannedDay = 0.0
     @State private var showPlanning = false
+    @State private var filter = BoardFilter()
+    @State private var showFilter = false
 
     private var store: BoardStore { BoardStore(context: context) }
     private var mode: BoardViewMode { BoardViewMode(rawValue: modeRaw) ?? .kanban }
@@ -18,9 +20,13 @@ struct BoardView: View {
         VStack(spacing: 0) {
             resizeHandle
             header
+            if showFilter && mode != .review {
+                BoardFilterBar(filter: filter)
+            }
             Rectangle().fill(Theme.stroke).frame(height: 1)
             content
         }
+        .environment(filter)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             LinearGradient(colors: [Theme.panelTop, Theme.panelBottom],
@@ -87,6 +93,15 @@ struct BoardView: View {
             lensTabStrip
             Spacer()
 
+            if mode != .review {
+                Button { showFilter.toggle() } label: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .foregroundStyle(filter.isActive ? Theme.accent : Theme.textSecondary)
+                }
+                .buttonStyle(NoirIconButtonStyle())
+                .help("过滤")
+                .accessibilityLabel("过滤")
+            }
             Button { NotificationCenter.default.post(name: .openSettings, object: nil) } label: {
                 Image(systemName: "gearshape")
             }
