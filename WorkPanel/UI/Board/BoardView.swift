@@ -11,7 +11,7 @@ struct BoardView: View {
     @AppStorage(AppSettings.Key.lastPlannedDay) private var lastPlannedDay = 0.0
     @State private var showPlanning = false
     @State private var filter = BoardFilter()
-    @State private var showFilter = false
+    @State private var showFilter = true
 
     private var store: BoardStore { BoardStore(context: context) }
     private var mode: BoardViewMode { BoardViewMode(rawValue: modeRaw) ?? .kanban }

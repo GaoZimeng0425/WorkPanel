@@ -120,6 +120,7 @@ struct BoardFilterBar: View {
                 .padding(.horizontal, 10).padding(.vertical, 5)
                 .background(Capsule(style: .continuous).fill(on ? tint : Color.clear))
                 .overlay(Capsule(style: .continuous).stroke(tint.opacity(0.7), lineWidth: 0.8))
+                .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
     }
