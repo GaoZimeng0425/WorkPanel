@@ -17,8 +17,8 @@
 ## 入口与外壳
 
 - **快捷键:** 新增 `KeyboardShortcuts.Name.toggleAllEdit`,默认 **⌘⌥L**(J=capture、K=board、L=list-all)。在 `HotkeyManager` 增加 `registerAllEdit(_:)`,在 `AppDelegate.applicationDidFinishLaunching` 像现有两个一样注册,`toggleAllEdit()` 切换面板显隐。
-- **面板:** 新增 `AllEditPanelController`,一个居中、可缩放的 `KeyablePanel`(比 capture 大;借鉴 `BoardPanelController` 的缩放/持久化或 `PanelController` 的居中,取其一)。Esc 在面板层处理 → 丢弃并关闭;再次按快捷键时若可见则隐藏。
-- **视图:** 新增 `AllTasksEditorView`(SwiftUI):顶部标题栏、中部一个铺满的 `NativeTextViewWrapper`(复用 `TaskEditorView` 的 `markdownConfig` 着色),底部 `⌘↩ 保存 / esc 取消` 页脚。
+- **面板:** **复用现有 `PanelController`**(无需新建面板控制器)——它本就内容无关:`show(_:)` 接受任意 `@ViewBuilder`,自带无边框/居中/可缩放(560×580,上限 900×1100)/ esc 取消 / 记忆位置 / 自动聚焦文本域。唯一改动:把当前写死的 `frameAutosaveName`("WorkPanelTaskEditorFrame")改成 `init` 参数;在 `AppDelegate` 里再实例化一个 `PanelController(frameAutosaveName: "WorkPanelAllEditFrame")`,使全量编辑器记住自己独立、更大的尺寸。Esc 走面板层 `onCancel` → 丢弃并关闭;再次按快捷键若可见则隐藏。
+- **视图:** 新增 `AllTasksEditorView`(SwiftUI):顶部标题栏、中部一个铺满的 `NativeTextViewWrapper`、底部 `⌘↩ 保存 / esc 取消` 页脚。**不复用 `TaskEditorView`**——后者整个围绕单个任务构建(单任务 `@State`、per-task 控件、单任务 `save()`),与「一个缓冲区代表多条任务」的形态相悖。复用的粒度是 markdown 编辑器零件:`NativeTextViewWrapper` + 把 `TaskEditorView.markdownConfig` 抽成共享配置,两视图共用同一套着色。
 
 ## 文档格式
 
@@ -72,8 +72,8 @@
   - `reconcile(text:idMap:liveTasks:columns:) -> ChangeSet`(creates / updates / moves / deletes)
   - 不依赖 UI、不依赖 SwiftData 实体的可变状态,可像 `BoardStore` / `Reorder` 一样纯单测。
 - **身份跟踪器**:编辑期间维持「块 ↔ id」。
-- **`AllTasksEditorView`**:SwiftUI 外壳。
-- **`AllEditPanelController`** + 快捷键接线。
+- **`AllTasksEditorView`**:SwiftUI 外壳,复用 `NativeTextViewWrapper` + 共享 `markdownConfig`。
+- **`PanelController`** 复用(加可配置 `frameAutosaveName`)+ `HotkeyManager`/`AppDelegate` 快捷键接线。
 
 ## 错误与边界处理
 
