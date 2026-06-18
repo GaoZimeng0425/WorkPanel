@@ -74,5 +74,20 @@ struct WorkDocumentReconcileTests {
         let cs = WorkDocument.reconcile(blocks: blocks, anchors: [.init(id: id, offset: 0)],
                                         liveTasks: [liveSnap(id, "买菜", column: colA)])
         #expect(cs.updates.first?.complete == true)
+        #expect(cs.creates.isEmpty)
+        #expect(cs.deletes.isEmpty)
+    }
+
+    @Test func anchorIdAbsentFromLiveBecomesCreate() {
+        let staleID = UUID()
+        let blocks = [WorkDocument.Block(columnID: colA, title: "孤儿", priority: nil, tags: [],
+                                         notes: "", completed: false, offset: 0)]
+        // 锚点偏移命中,但该 id 不在 liveTasks 快照里 → 应当新建,而非更新/删除
+        let cs = WorkDocument.reconcile(blocks: blocks,
+                                        anchors: [.init(id: staleID, offset: 0)],
+                                        liveTasks: [])
+        #expect(cs.updates.isEmpty)
+        #expect(cs.deletes.isEmpty)
+        #expect(cs.creates.map(\.title) == ["孤儿"])
     }
 }
