@@ -23,6 +23,7 @@ enum WorkDocument {
         nonisolated let id: UUID
         nonisolated var offset: Int
 
+        // 嵌套于 MainActor 隔离的 enum 内,合成的 Equatable 会带 MainActor 隔离,nonisolated 上下文无法用;故手写 nonisolated ==(新增字段时记得同步比较)。
         nonisolated static func == (lhs: Anchor, rhs: Anchor) -> Bool {
             lhs.id == rhs.id && lhs.offset == rhs.offset
         }
@@ -75,6 +76,7 @@ enum WorkDocument {
         nonisolated var oldLen: Int
         nonisolated var newLen: Int
 
+        // 嵌套于 MainActor 隔离的 enum 内,合成的 Equatable 会带 MainActor 隔离,nonisolated 上下文无法用;故手写 nonisolated ==(新增字段时记得同步比较)。
         nonisolated static func == (lhs: Edit, rhs: Edit) -> Bool {
             lhs.loc == rhs.loc && lhs.oldLen == rhs.oldLen && lhs.newLen == rhs.newLen
         }
