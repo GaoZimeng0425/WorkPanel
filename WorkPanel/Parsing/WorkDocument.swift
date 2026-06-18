@@ -110,6 +110,14 @@ enum WorkDocument {
         nonisolated var notes: String
         nonisolated var completed: Bool
         nonisolated var offset: Int
+
+        // 嵌套于 MainActor 隔离的 enum 内,合成的 Equatable 会带 MainActor 隔离,nonisolated 上下文无法用;故手写 nonisolated ==(新增字段时记得同步比较)。
+        nonisolated static func == (lhs: Block, rhs: Block) -> Bool {
+            lhs.columnID == rhs.columnID && lhs.title == rhs.title &&
+            lhs.priority == rhs.priority && lhs.tags == rhs.tags &&
+            lhs.notes == rhs.notes && lhs.completed == rhs.completed &&
+            lhs.offset == rhs.offset
+        }
     }
 
     nonisolated static func parse(text: String, columns: [WorkColumn]) -> [Block] {

@@ -22,6 +22,7 @@ struct WorkDocumentParseTests {
         #expect(blocks[0].tags == ["工作"])
         #expect(blocks[0].notes == "汇总进展\n第二行备注")
         #expect(blocks[0].completed == false)
+        #expect(Array(text)[blocks[0].offset] == "-")
         #expect(blocks[1].title == "买菜")
         #expect(blocks[1].completed == true)
         #expect(blocks[1].notes == "")
