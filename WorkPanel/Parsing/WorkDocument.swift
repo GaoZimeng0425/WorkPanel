@@ -22,6 +22,10 @@ enum WorkDocument {
     struct Anchor: Equatable, Sendable {
         nonisolated let id: UUID
         nonisolated var offset: Int
+
+        nonisolated static func == (lhs: Anchor, rhs: Anchor) -> Bool {
+            lhs.id == rhs.id && lhs.offset == rhs.offset
+        }
     }
 
     nonisolated static func serialize(columns: [WorkColumn],
@@ -64,5 +68,35 @@ enum WorkDocument {
         }
         parts.append(contentsOf: task.tags.map { "#" + $0 })
         return parts.joined(separator: " ")
+    }
+
+    struct Edit: Equatable, Sendable {
+        nonisolated var loc: Int
+        nonisolated var oldLen: Int
+        nonisolated var newLen: Int
+
+        nonisolated static func == (lhs: Edit, rhs: Edit) -> Bool {
+            lhs.loc == rhs.loc && lhs.oldLen == rhs.oldLen && lhs.newLen == rhs.newLen
+        }
+    }
+
+    /// 单段编辑检测:公共前缀长度 = loc,公共后缀长度从两端各扣除 loc 之后取。
+    nonisolated static func computeEdit(old: [Character], new: [Character]) -> Edit {
+        var p = 0
+        let minLen = min(old.count, new.count)
+        while p < minLen && old[p] == new[p] { p += 1 }
+        var s = 0
+        while s < (minLen - p) && old[old.count - 1 - s] == new[new.count - 1 - s] { s += 1 }
+        return Edit(loc: p, oldLen: old.count - p - s, newLen: new.count - p - s)
+    }
+
+    nonisolated static func shift(anchors: [Anchor], by edit: Edit) -> [Anchor] {
+        let delta = edit.newLen - edit.oldLen
+        let regionEnd = edit.loc + edit.oldLen
+        return anchors.compactMap { a in
+            if a.offset >= regionEnd { return Anchor(id: a.id, offset: a.offset + delta) }
+            if a.offset < edit.loc { return a }
+            return nil                                   // 落在删除区间内 → 溶解
+        }
     }
 }
