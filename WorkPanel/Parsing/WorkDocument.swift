@@ -101,4 +101,60 @@ enum WorkDocument {
             return nil                                   // 落在删除区间内 → 溶解
         }
     }
+
+    struct Block: Equatable, Sendable {
+        nonisolated var columnID: UUID?
+        nonisolated var title: String
+        nonisolated var priority: Priority?
+        nonisolated var tags: [String]
+        nonisolated var notes: String
+        nonisolated var completed: Bool
+        nonisolated var offset: Int
+    }
+
+    nonisolated static func parse(text: String, columns: [WorkColumn]) -> [Block] {
+        var blocks: [Block] = []
+        var currentColumn: UUID? = nil
+        var offset = 0
+        var noteLines: [String] = []                     // 累积当前块的 notes
+
+        func flushNotes() {
+            if !blocks.isEmpty {
+                blocks[blocks.count - 1].notes = noteLines.joined(separator: "\n")
+            }
+            noteLines = []
+        }
+
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        for line in lines {
+            let lineStart = offset
+            offset += line.count + 1                      // +1 = 换行符;末行多算 1 无妨
+
+            if line.hasPrefix("## ") {
+                flushNotes()
+                let name = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+                currentColumn = columns.first { $0.name == name }?.id
+            } else if let rest = itemBody(line) {
+                flushNotes()
+                let parsed = WorkLine.parse(rest.text)
+                blocks.append(Block(columnID: currentColumn,
+                                    title: parsed.title, priority: parsed.priority, tags: parsed.tags,
+                                    notes: "", completed: rest.completed, offset: lineStart))
+            } else if let first = line.first, first == " " || first == "\t" {
+                let trimmed = line.drop { $0 == " " || $0 == "\t" }
+                if !trimmed.isEmpty { noteLines.append(String(trimmed)) }
+            }
+            // 其余(空行 / 无缩进杂行)忽略
+        }
+        flushNotes()
+        return blocks
+    }
+
+    /// 识别 `- [ ] x` / `- [x] x` / `- [X] x`,返回正文与勾选态;非条目行返回 nil。
+    nonisolated private static func itemBody(_ line: String) -> (text: String, completed: Bool)? {
+        for (prefix, done) in [("- [ ] ", false), ("- [x] ", true), ("- [X] ", true)] {
+            if line.hasPrefix(prefix) { return (String(line.dropFirst(prefix.count)), done) }
+        }
+        return nil
+    }
 }
