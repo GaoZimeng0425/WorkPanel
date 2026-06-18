@@ -246,8 +246,10 @@ enum WorkDocument {
             for task in items.sorted(by: { $0.boardOrder < $1.boardOrder }) {
                 anchors.append(Anchor(id: task.id, offset: text.count))   // '-' 的偏移
                 text += "- [ ] " + itemLine(task) + "\n"
-                for noteLine in task.notes.split(separator: "\n", omittingEmptySubsequences: false) {
-                    text += "    " + noteLine + "\n"
+                if !task.notes.isEmpty {                       // 空备注不输出缩进空行
+                    for noteLine in task.notes.split(separator: "\n", omittingEmptySubsequences: false) {
+                        text += "    " + noteLine + "\n"
+                    }
                 }
             }
         }
@@ -319,7 +321,7 @@ struct WorkDocumentShiftTests {
     }
 
     @Test func computeEditFindsSingleSpan() {
-        #expect(edit("abcdef", "abXYZdef") == .init(loc: 2, oldLen: 0, newLen: 2))  // 插入 XY... 实为 +2
+        #expect(edit("abcdef", "abXcdef") == .init(loc: 2, oldLen: 0, newLen: 1))   // 在 2 处插入 X
         #expect(edit("abcdef", "abdef") == .init(loc: 2, oldLen: 1, newLen: 0))      // 删 c
         #expect(edit("abc", "abc") == .init(loc: 3, oldLen: 0, newLen: 0))           // 无变化
     }
