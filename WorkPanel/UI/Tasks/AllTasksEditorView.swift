@@ -31,7 +31,7 @@ struct AllTasksEditorView: View {
                     .stroke(Theme.strokeStrong, lineWidth: 0.7))
 
             HStack {
-                Text("## 状态分组 · 缩进=备注 · !高/!低 · #标签 · ⌘↩ 保存 · esc 取消")
+                Text("状态分组 · 缩进=备注 · !高/!低 · #标签 · ⌘↩ 保存 · esc 取消")
                     .font(.caption).foregroundStyle(Theme.textTertiary)
                     .lineLimit(1).minimumScaleFactor(0.8)
                 Spacer()

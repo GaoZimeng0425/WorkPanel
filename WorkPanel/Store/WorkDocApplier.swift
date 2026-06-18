@@ -41,6 +41,7 @@ final class WorkDocApplier {
             task.columnID = spec.columnID
             task.boardOrder = spec.order
             if spec.complete && !task.isCompleted {
+                scheduler.cancel(for: task)
                 if let follow = todoStore.complete(task) {
                     Task { await self.scheduler.schedule(for: follow) }
                 }
