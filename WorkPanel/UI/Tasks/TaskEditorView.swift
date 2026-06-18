@@ -121,7 +121,7 @@ struct TaskEditorView: View {
             TokenStrip(fields: resolved.fields)
 
             // 编辑即样式:所见即所得,无编辑/预览切换。
-            NativeTextViewWrapper(text: $text, configuration: markdownConfig, fontSize: 13)
+            NativeTextViewWrapper(text: $text, configuration: SharedMarkdown.editorConfig, fontSize: 13)
             .frame(minHeight: 160, maxHeight: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
@@ -188,29 +188,6 @@ struct TaskEditorView: View {
                 onClose: { expandPrompt = nil }
             )
         }
-    }
-
-    /// 把 noir 调色板灌进 MarkdownEngine,并收紧默认的字号/标题倍率/内边距。
-    private var markdownConfig: MarkdownEditorConfiguration {
-        // 正文白色;引擎允许独立着色的部分(标记/链接/行内代码/未勾选复选框/引用条)用橙色。
-        // 标题/加粗/项目符号文字绑在 bodyText 上,无法单独着色,故保持白色。
-        let orange = NSColor(Theme.accent)
-        var theme = MarkdownEditorTheme.default
-        theme.bodyText = NSColor(Theme.textPrimary)
-        theme.mutedText = orange
-        theme.disabledText = NSColor(Theme.textMuted)
-        theme.headingMarker = orange
-        theme.link = orange
-        theme.strikethroughColor = NSColor(Theme.textTertiary)
-
-        var config = MarkdownEditorConfiguration.default
-        config.theme = theme
-        config.textInsets = TextInsets(horizontal: 14, vertical: 12)   // 文本与卡片边缘留白
-        config.headings.fontMultipliers = [1.5, 1.3, 1.15, 1.0, 0.9, 0.8]
-        config.overscroll = OverscrollPolicy(percent: 0.1, maxPoints: 40, minPoints: 0)
-        config.lists.autoClosePairsEnabled = false   // 别把 `[` 自动补成 `[]`,方便手敲 `- [ ] `
-        config.lists.indentPerLevel = 0              // 渲染组件不加缩进,贴左边距
-        return config
     }
 
     private var sparklesIcon: some View {
