@@ -165,4 +165,86 @@ enum WorkDocument {
         }
         return nil
     }
+
+    struct CreateSpec: Equatable, Sendable {
+        nonisolated var title: String
+        nonisolated var notes: String
+        nonisolated var priority: Priority
+        nonisolated var tags: [String]
+        nonisolated var columnID: UUID?
+        nonisolated var order: Int
+
+        // 嵌套于 MainActor 隔离的 enum 内,合成的 Equatable 会带 MainActor 隔离,nonisolated 上下文无法用;故手写 nonisolated ==(新增字段时记得同步比较)。
+        nonisolated static func == (lhs: CreateSpec, rhs: CreateSpec) -> Bool {
+            lhs.title == rhs.title && lhs.notes == rhs.notes &&
+            lhs.priority == rhs.priority && lhs.tags == rhs.tags &&
+            lhs.columnID == rhs.columnID && lhs.order == rhs.order
+        }
+    }
+
+    struct UpdateSpec: Equatable, Sendable {
+        nonisolated var id: UUID
+        nonisolated var title: String
+        nonisolated var notes: String
+        nonisolated var priority: Priority
+        nonisolated var tags: [String]
+        nonisolated var columnID: UUID?
+        nonisolated var order: Int
+        nonisolated var complete: Bool
+
+        // 嵌套于 MainActor 隔离的 enum 内,合成的 Equatable 会带 MainActor 隔离,nonisolated 上下文无法用;故手写 nonisolated ==(新增字段时记得同步比较)。
+        nonisolated static func == (lhs: UpdateSpec, rhs: UpdateSpec) -> Bool {
+            lhs.id == rhs.id && lhs.title == rhs.title && lhs.notes == rhs.notes &&
+            lhs.priority == rhs.priority && lhs.tags == rhs.tags &&
+            lhs.columnID == rhs.columnID && lhs.order == rhs.order && lhs.complete == rhs.complete
+        }
+    }
+
+    struct ChangeSet: Equatable, Sendable {
+        nonisolated var creates: [CreateSpec]
+        nonisolated var updates: [UpdateSpec]
+        nonisolated var deletes: [UUID]
+
+        // 嵌套于 MainActor 隔离的 enum 内,合成的 Equatable 会带 MainActor 隔离,nonisolated 上下文无法用;故手写 nonisolated ==(新增字段时记得同步比较)。
+        nonisolated static func == (lhs: ChangeSet, rhs: ChangeSet) -> Bool {
+            lhs.creates == rhs.creates && lhs.updates == rhs.updates && lhs.deletes == rhs.deletes
+        }
+    }
+
+    nonisolated static func reconcile(blocks: [Block], anchors: [Anchor],
+                                      liveTasks: [WorkTaskSnapshot]) -> ChangeSet {
+        let liveByID = Dictionary(uniqueKeysWithValues: liveTasks.map { ($0.id, $0) })
+        let idByOffset = Dictionary(anchors.map { ($0.offset, $0.id) }, uniquingKeysWith: { a, _ in a })
+
+        var creates: [CreateSpec] = []
+        var updates: [UpdateSpec] = []
+        var matched: Set<UUID> = []
+        var orderByColumn: [UUID?: Int] = [:]                 // 每列(含 nil)文档顺序计数
+
+        for block in blocks {
+            guard !block.title.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
+            let order = orderByColumn[block.columnID, default: 0]
+            orderByColumn[block.columnID] = order + 1
+
+            if let id = idByOffset[block.offset], let live = liveByID[id] {
+                matched.insert(id)
+                updates.append(UpdateSpec(
+                    id: id,
+                    title: block.title.trimmingCharacters(in: .whitespaces),
+                    notes: block.notes,
+                    priority: block.priority ?? live.priority,                 // 缺省保留
+                    tags: block.tags.isEmpty ? live.tags : block.tags,          // 缺省保留
+                    columnID: block.columnID, order: order, complete: block.completed))
+            } else {
+                creates.append(CreateSpec(
+                    title: block.title.trimmingCharacters(in: .whitespaces),
+                    notes: block.notes,
+                    priority: block.priority ?? .medium,
+                    tags: block.tags,
+                    columnID: block.columnID, order: order))
+            }
+        }
+        let deletes = liveTasks.map(\.id).filter { !matched.contains($0) }
+        return ChangeSet(creates: creates, updates: updates, deletes: deletes)
+    }
 }
