@@ -74,6 +74,12 @@ final class MCPToolHandlers {
             }
             tasks = tasks.filter { ($0.deadline ?? .distantFuture) < date }
         }
+        if args.contains("startAfter") {
+            guard let s = args["startAfter"]?.stringValue, let date = ISO8601Date.date(s) else {
+                throw ToolError.badArgument("Invalid 'startAfter'")
+            }
+            tasks = tasks.filter { ($0.startDate ?? .distantPast) >= date }
+        }
         return try encode(tasks.map(dto))
     }
 
@@ -95,6 +101,13 @@ final class MCPToolHandlers {
         parsed.title = title
         parsed.priority = args["priority"]?.stringValue.flatMap(Priority.init(apiName:)) ?? .medium
         parsed.tags = args["tags"]?.arrayValue?.compactMap(\.stringValue) ?? []
+        if let s = args["recurrence"]?.stringValue {
+            guard let rule = RecurrenceRule(rawValue: s) else {
+                throw ToolError.badArgument("Invalid 'recurrence'")
+            }
+            parsed.recurrence = rule
+        }
+        if let u = args["urgent"]?.boolValue { parsed.urgencyOverride = u }
         if args.contains("deadline"), args["deadline"]?.isNull != true {
             guard let s = args["deadline"]?.stringValue, let date = ISO8601Date.date(s) else {
                 throw ToolError.badArgument("Invalid 'deadline'")
@@ -143,6 +156,16 @@ final class MCPToolHandlers {
         }
         if let v = args["priority"]?.stringValue, let p = Priority(apiName: v) { task.priority = p }
         if let arr = args["tags"]?.arrayValue { task.tags = arr.compactMap(\.stringValue) }
+        if args.contains("recurrence") {
+            if args["recurrence"]?.isNull == true { task.recurrence = nil }
+            else if let s = args["recurrence"]?.stringValue, let r = RecurrenceRule(rawValue: s) { task.recurrence = r }
+            else { throw ToolError.badArgument("Invalid 'recurrence'") }
+        }
+        if args.contains("urgent") {
+            if args["urgent"]?.isNull == true { task.urgencyOverride = nil }
+            else if let b = args["urgent"]?.boolValue { task.urgencyOverride = b }
+            else { throw ToolError.badArgument("Invalid 'urgent'") }
+        }
         tags.register(names: task.tags)
         try context.saveTracking()
         scheduler.cancel(for: task)

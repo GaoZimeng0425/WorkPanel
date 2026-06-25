@@ -7,6 +7,7 @@ struct KanbanLensView: View {
     @Environment(\.modelContext) private var context
     @Query private var tasks: [TodoTask]
     @Query(sort: \BoardColumn.order) private var columns: [BoardColumn]
+    @Environment(BoardFilter.self) private var filter
 
     @State private var renaming: BoardColumn?
     @State private var renameText = ""
@@ -28,12 +29,12 @@ struct KanbanLensView: View {
     }
 
     private func activeTasks(in column: BoardColumn) -> [TodoTask] {
-        tasks.filter { !$0.isCompleted && columnID(for: $0) == column.id }
+        filter.apply(tasks).filter { !$0.isCompleted && columnID(for: $0) == column.id }
              .sorted { $0.boardOrder < $1.boardOrder }
     }
 
     private var archivedTasks: [TodoTask] {
-        tasks.filter { $0.isCompleted }
+        filter.apply(tasks).filter { $0.isCompleted }
              .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
     }
 

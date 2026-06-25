@@ -60,7 +60,8 @@ struct WorkPanelApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let panel = PanelController()
+    private let panel = PanelController(frameAutosaveName: "WorkPanelTaskEditorFrame")
+    private let allEdit = PanelController(frameAutosaveName: "WorkPanelAllEditFrame")
     private let board = BoardPanelController()
     private let settings = SettingsPanelController()
     private let scheduler = ReminderScheduler()
@@ -72,6 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppSettings.appearance.apply()
         HotkeyManager.register { [weak self] in self?.toggleCapture() }
         HotkeyManager.registerBoard { [weak self] in self?.toggleBoard() }
+        HotkeyManager.registerAllEdit { [weak self] in self?.toggleAllEdit() }
         NotificationCenter.default.addObserver(forName: .openSettings, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.toggleSettings() }
         }
@@ -111,6 +113,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if board.isVisible { board.hide(); return }
         board.show {
             BoardView(onClose: { [weak self] in self?.board.hide() })
+                .modelContainer(SharedModel.container)
+        }
+    }
+
+    private func toggleAllEdit() {
+        if allEdit.isVisible { allEdit.hide(); return }
+        allEdit.show {
+            AllTasksEditorView(onClose: { [weak self] in self?.allEdit.hide() })
                 .modelContainer(SharedModel.container)
         }
     }

@@ -5,7 +5,11 @@ import SwiftUI
 final class PanelController {
     private var panel: NSPanel?
     /// 记忆用户拖动后的位置与尺寸,跨进程持久化(AppKit 自动存到 UserDefaults)。
-    private let frameAutosaveName = "WorkPanelTaskEditorFrame"
+    private let frameAutosaveName: String
+
+    init(frameAutosaveName: String = "WorkPanelTaskEditorFrame") {
+        self.frameAutosaveName = frameAutosaveName
+    }
 
     var isVisible: Bool { panel?.isVisible ?? false }
 

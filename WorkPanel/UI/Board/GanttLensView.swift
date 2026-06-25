@@ -7,6 +7,7 @@ struct GanttLensView: View {
     @Environment(\.modelContext) private var context
     @Query private var tasks: [TodoTask]
     @Query(sort: \BoardColumn.order) private var columns: [BoardColumn]
+    @Environment(BoardFilter.self) private var filter
 
     private let scheduler = ReminderScheduler()
 
@@ -20,7 +21,7 @@ struct GanttLensView: View {
 
     // 未完成任务 → GanttRow,分区
     private var partitioned: (scheduled: [GanttRow], unscheduled: [GanttRow]) {
-        let rows = tasks.filter { !$0.isCompleted }
+        let rows = filter.apply(tasks).filter { !$0.isCompleted }
             .map { GanttRow(id: $0.id, start: $0.startDate, end: $0.deadline) }
         return GanttGeometry.partition(rows)
     }

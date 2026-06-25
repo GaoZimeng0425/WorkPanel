@@ -262,4 +262,79 @@ struct MCPToolHandlersTests {
         let cleared = try await h.call("update_task", ["id": .string(t.id.uuidString), "startDate": .null])
         #expect(try decodeTask(cleared).startDate == nil)
     }
+
+    // MARK: - Recurrence
+
+    @Test func createTaskAcceptsRecurrence() async throws {
+        let (h, _, _) = try makeHandlers()
+        let json = try await h.call("create_task", ["title": "每天站会", "recurrence": "daily"])
+        #expect(try decodeTask(json).recurrence == "daily")
+    }
+
+    @Test func createTaskRejectsBadRecurrence() async throws {
+        let (h, _, _) = try makeHandlers()
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("create_task", ["title": "x", "recurrence": "hourly"])
+        }
+    }
+
+    @Test func updateTaskSetsAndClearsRecurrence() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "改重复"); ctx.insert(t); try ctx.save()
+
+        let set = try await h.call("update_task", ["id": .string(t.id.uuidString), "recurrence": "weekly"])
+        #expect(try decodeTask(set).recurrence == "weekly")
+
+        let cleared = try await h.call("update_task", ["id": .string(t.id.uuidString), "recurrence": .null])
+        #expect(try decodeTask(cleared).recurrence == nil)
+    }
+
+    // MARK: - Urgency override
+
+    @Test func createTaskAcceptsUrgentOverride() async throws {
+        let (h, _, _) = try makeHandlers()
+        // No deadline → would be non-urgent; override forces true.
+        let json = try await h.call("create_task", ["title": "盯紧", "urgent": true])
+        #expect(try decodeTask(json).isUrgent == true)
+    }
+
+    @Test func updateTaskSetsAndClearsUrgentOverride() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "改紧急"); ctx.insert(t); try ctx.save()
+
+        let set = try await h.call("update_task", ["id": .string(t.id.uuidString), "urgent": true])
+        #expect(try decodeTask(set).isUrgent == true)
+        #expect(t.urgencyOverride == true)
+
+        let cleared = try await h.call("update_task", ["id": .string(t.id.uuidString), "urgent": .null])
+        #expect(t.urgencyOverride == nil)   // back to auto (no deadline → not urgent)
+        #expect(try decodeTask(cleared).isUrgent == false)
+    }
+
+    // MARK: - DTO exposes snooze
+
+    @Test func dtoExposesSnoozedUntil() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "推迟我"); ctx.insert(t); try ctx.save()
+        let until = ISO8601Date.string(Date(timeIntervalSince1970: 99999))
+
+        _ = try await h.call("snooze_task", ["id": .string(t.id.uuidString), "until": .string(until)])
+        let dto = try decodeTask(try await h.call("get_task", ["id": .string(t.id.uuidString)]))
+        #expect(dto.snoozedUntil == until)
+    }
+
+    // MARK: - startAfter filter
+
+    @Test func listTasksFiltersByStartAfter() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let early = TodoTask(title: "早"); early.startDate = Date(timeIntervalSince1970: 1000)
+        let late = TodoTask(title: "晚"); late.startDate = Date(timeIntervalSince1970: 9000)
+        let none = TodoTask(title: "无")
+        [early, late, none].forEach { ctx.insert($0) }
+        try ctx.save()
+
+        let cutoff = ISO8601Date.string(Date(timeIntervalSince1970: 5000))
+        let json = try await h.call("list_tasks", ["startAfter": .string(cutoff)])
+        #expect(try decodeArray(json).map(\.title) == ["晚"])
+    }
 }
