@@ -283,7 +283,7 @@ git commit -m "feat(jira): add pull merge engine with local-wins and one-way com
 
 **Interfaces:**
 - Consumes: Task 2 `AppSettings.jiraDismiss/jiraDismissedKeys/jiraResetDismissed/jiraConfigured/jiraJQL`;Task 4 `JiraPullService.pull(context:dismissedKeys:now:)`;Task 3 `JiraClient.init(domain:email:apiToken:)`
-- Produces: `TodoStore.delete(_ task:now:)` 签名不变,行为增「`task.jiraKey` 非 nil 时 `AppSettings.jiraDismiss(key)`」;设置面板出现「Jira 同步」tab
+- Produces: `TodoStore.delete(_ task:)` 签名不变(计划 1 终审已移除 `now:` 参数),行为增「`task.jiraKey` 非 nil 时 `AppSettings.jiraDismiss(key)`」;设置面板出现「Jira 同步」tab
 
 - [ ] **Step 1: 写失败测试**
 
