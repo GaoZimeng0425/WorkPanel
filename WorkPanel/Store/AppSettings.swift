@@ -24,7 +24,8 @@ enum AppSettings {
         static let jiraJQL = "jiraJQL"
         static let jiraDismissedKeys = "jiraDismissedKeys"
         static let jiraColumnMapping = "jiraColumnMapping"       // JSON: [项目:[状态:列名]]
-        static let jiraDiscoveredStatuses = "jiraDiscoveredStatuses" // JSON: [JiraDiscoveredStatus]   // [String],本机 dismiss 状态,不导出
+        static let jiraDiscoveredStatuses = "jiraDiscoveredStatuses" // JSON: [JiraDiscoveredStatus]
+        static let jiraAutoPullMinutes = "jiraAutoPullMinutes"       // 0 = 关闭   // [String],本机 dismiss 状态,不导出
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
@@ -37,6 +38,7 @@ enum AppSettings {
             Key.boardViewMode: BoardViewMode.kanban.rawValue,
             Key.mcpEnabled: false,
             Key.mcpPort: 8787,
+            Key.jiraAutoPullMinutes: 0,
             Key.jiraDomain: "antalpha.atlassian.net",
             Key.jiraJQL: defaultJQL,
         ])
@@ -101,6 +103,11 @@ enum AppSettings {
         return s.isEmpty ? defaultJQL : s
     }
     /// 三项配置齐全才算可用——Jira 入口的显示门槛。
+    /// 自动拉取间隔(分钟);0 = 关闭。
+    static var jiraAutoPullMinutes: Int {
+        let m = UserDefaults.standard.integer(forKey: Key.jiraAutoPullMinutes)
+        return max(0, m)
+    }
     static var jiraConfigured: Bool {
         !jiraDomain.isEmpty && !jiraEmail.isEmpty && !jiraAPIToken.isEmpty
     }

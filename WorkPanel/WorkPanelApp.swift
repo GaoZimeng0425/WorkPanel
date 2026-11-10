@@ -66,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = SettingsPanelController()
     private let scheduler = ReminderScheduler()
     private var mcpServer: MCPServer?
+    private var jiraAutoPullTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppSettings.registerDefaults()
@@ -84,6 +85,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated { self?.restartMCP() }
         }
         startOrStopMCP()
+        NotificationCenter.default.addObserver(forName: .jiraSettingsChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restartJiraAutoPull() }
+        }
+        restartJiraAutoPull()
         Task { _ = await scheduler.requestAuthorization() }
 
         if SharedModel.isUITesting {
@@ -126,6 +131,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Jira 定时自动拉取:间隔改变(通知)或启动时(重)建;0 = 关闭。
+    private func restartJiraAutoPull() {
+        jiraAutoPullTimer?.invalidate()
+        jiraAutoPullTimer = nil
+        let minutes = AppSettings.jiraAutoPullMinutes
+        guard minutes > 0, AppSettings.jiraConfigured else { return }
+        jiraAutoPullTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(minutes * 60), repeats: true) { _ in
+            Task { @MainActor in
+                _ = await JiraPullRunner.pullNow(context: SharedModel.container.mainContext,
+                                                 noticeOnSuccess: false)
+            }
+        }
+    }
+
     private func startOrStopMCP() {
         if AppSettings.mcpEnabled {
             let handlers = MCPToolHandlers(context: SharedModel.container.mainContext)
@@ -143,5 +162,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mcpServer?.stop()
         mcpServer = nil
         startOrStopMCP()
+        NotificationCenter.default.addObserver(forName: .jiraSettingsChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restartJiraAutoPull() }
+        }
+        restartJiraAutoPull()
     }
 }

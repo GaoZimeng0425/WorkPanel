@@ -22,6 +22,7 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.jiraEmail) private var jiraEmail = ""
     @AppStorage(AppSettings.Key.jiraAPIToken) private var jiraAPIToken = ""
     @AppStorage(AppSettings.Key.jiraJQL) private var jiraJQL = ""
+    @AppStorage(AppSettings.Key.jiraAutoPullMinutes) private var autoPullMinutes = 0
     @State private var isPulling = false
     @State private var dismissedKeys: [String] = AppSettings.jiraDismissedKeys
     @State private var discovered: [JiraDiscoveredStatus] = AppSettings.jiraDiscoveredStatuses
@@ -526,6 +527,20 @@ struct SettingsView: View {
                 }
             }
             divider
+            row("自动拉取", systemImage: "timer") {
+                Picker("", selection: $autoPullMinutes) {
+                    Text("关闭").tag(0)
+                    Text("5 分钟").tag(5)
+                    Text("10 分钟").tag(10)
+                    Text("30 分钟").tag(30)
+                    Text("60 分钟").tag(60)
+                }
+                .labelsHidden().fixedSize()
+                .onChange(of: autoPullMinutes) { _, _ in
+                    NotificationCenter.default.post(name: .jiraSettingsChanged, object: nil)
+                }
+            }
+            divider
             row("拉取", systemImage: "arrow.down.circle") {
                 Button(isPulling ? "拉取中…" : "立即拉取") { runJiraPull() }
                     .buttonStyle(NoirPillButtonStyle(prominent: true))
@@ -570,23 +585,12 @@ struct SettingsView: View {
         guard !isPulling else { return }
         isPulling = true
         Task {
-            let report = await JiraPullService(
-                fetcher: JiraClient(domain: AppSettings.jiraDomain,
-                                    email: AppSettings.jiraEmail,
-                                    apiToken: AppSettings.jiraAPIToken)
-            ).pull(context: SharedModel.container.mainContext,
-                   dismissedKeys: AppSettings.jiraDismissedKeys)
+            _ = await JiraPullRunner.pullNow(context: SharedModel.container.mainContext,
+                                             noticeOnSuccess: true)
             isPulling = false
             dismissedKeys = AppSettings.jiraDismissedKeys
             discovered = AppSettings.jiraDiscoveredStatuses
             columnMapping = AppSettings.jiraColumnMapping
-            if let msg = report.failedMessage {
-                Notice.show(msg)
-            } else {
-                var text = "Jira 拉取:新增 \(report.inserted) · 更新 \(report.updated) · 完成 \(report.completed) · 跳过 \(report.skipped)"
-                if report.truncated { text += " · 结果超 250 条已截断" }
-                Notice.show(text)
-            }
         }
     }
 

@@ -8,10 +8,13 @@ struct BoardFilterBar: View {
     @Query(sort: \Tag.order) private var allTags: [Tag]
 
     @State private var showTags = false
+    @State private var isPullingJira = false
+    @Environment(\.modelContext) private var context
 
     var body: some View {
         HStack(spacing: 10) {
             searchField
+            jiraPullButton
             priorityPills
             urgentPill
             tagButton
@@ -41,6 +44,23 @@ struct BoardFilterBar: View {
         .padding(.horizontal, 10).padding(.vertical, 5)
         .background(Theme.surfaceSubtle, in: Capsule(style: .continuous))
         .overlay(Capsule(style: .continuous).stroke(Theme.stroke, lineWidth: 0.6))
+    }
+
+    private var jiraPullButton: some View {
+        Button {
+            guard !isPullingJira else { return }
+            isPullingJira = true
+            Task {
+                _ = await JiraPullRunner.pullNow(context: context, noticeOnSuccess: true)
+                await MainActor.run { isPullingJira = false }
+            }
+        } label: {
+            Image(systemName: isPullingJira ? "arrow.triangle.2.circlepath" : "arrow.down.circle")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.accentText)
+        }
+        .buttonStyle(.plain)
+        .help(isPullingJira ? "正在拉取 Jira…" : "拉取 Jira")
     }
 
     private var priorityPills: some View {

@@ -159,3 +159,33 @@ struct JiraPullService {
         return Calendar.current.date(byAdding: DateComponents(hour: 23, minute: 59), to: start)
     }
 }
+
+/// 按钮与定时器共用的拉取入口:组装凭据、防重入、统一通知文案。
+@MainActor
+enum JiraPullRunner {
+    private static var isRunning = false
+
+    /// 返回 nil = 未配置凭据或已有一次拉取在进行。
+    /// noticeOnSuccess: 手动拉取展示结果摘要;自动拉取只在失败时打扰。
+    static func pullNow(context: ModelContext, noticeOnSuccess: Bool) async -> JiraPullReport? {
+        guard AppSettings.jiraConfigured, !isRunning else { return nil }
+        isRunning = true
+        defer { isRunning = false }
+        let report = await JiraPullService(
+            fetcher: JiraClient(domain: AppSettings.jiraDomain,
+                                email: AppSettings.jiraEmail,
+                                apiToken: AppSettings.jiraAPIToken)
+        ).pull(context: context, dismissedKeys: AppSettings.jiraDismissedKeys)
+        if noticeOnSuccess || report.failedMessage != nil {
+            Notice.show(summary(report))
+        }
+        return report
+    }
+
+    static func summary(_ r: JiraPullReport) -> String {
+        if let msg = r.failedMessage { return msg }
+        var text = "Jira 拉取:新增 \(r.inserted) · 更新 \(r.updated) · 完成 \(r.completed) · 跳过 \(r.skipped)"
+        if r.truncated { text += " · 结果超 250 条已截断" }
+        return text
+    }
+}

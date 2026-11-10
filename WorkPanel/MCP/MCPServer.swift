@@ -5,6 +5,8 @@ import Network
 extension Notification.Name {
     /// Posted by SettingsView when MCP enable/port changes so AppDelegate can restart the server.
     static let mcpSettingsChanged = Notification.Name("mcpSettingsChanged")
+    /// Posted by SettingsView when Jira auto-pull interval changes so AppDelegate can restart the timer.
+    static let jiraSettingsChanged = Notification.Name("jiraSettingsChanged")
 }
 
 @MainActor
