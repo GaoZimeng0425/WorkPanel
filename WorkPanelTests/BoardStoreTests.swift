@@ -187,7 +187,7 @@ struct BoardStoreTests {
         task.columnID = cols[1].id
         store.context.insert(task)
 
-        store.delete(cols[1], now: Date(timeIntervalSince1970: 100))
+        store.delete(cols[1])
         try store.context.save()
         #expect(!store.columns().contains { $0.id == cols[1].id })
         #expect(task.columnID == cols[0].id)

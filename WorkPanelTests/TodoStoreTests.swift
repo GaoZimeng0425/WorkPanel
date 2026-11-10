@@ -106,7 +106,7 @@ struct TodoStoreTests {
         let store = try makeStore()
         let task = TodoTask(title: "删我")
         store.context.insert(task)
-        store.delete(task, now: Date(timeIntervalSince1970: 100))
+        store.delete(task)
         try store.context.save()
         #expect(try store.context.fetch(FetchDescriptor<TodoTask>()).isEmpty)
     }

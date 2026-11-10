@@ -53,7 +53,7 @@ final class BoardStore {
     }
 
     /// 删除列;列内任务移到第一列。至少保留一个活动列(只剩一列时不删)。
-    func delete(_ column: BoardColumn, now: Date = .now) {
+    func delete(_ column: BoardColumn) {
         let cols = columns()
         guard cols.count > 1, let target = cols.first(where: { $0.id != column.id })
         else { return }

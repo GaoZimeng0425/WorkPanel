@@ -56,7 +56,7 @@ final class TodoStore {
         task.snoozedUntil = date
     }
 
-    func delete(_ task: TodoTask, now: Date = .now) {
+    func delete(_ task: TodoTask) {
         context.delete(task)
     }
 

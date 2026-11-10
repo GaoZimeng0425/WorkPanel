@@ -52,6 +52,26 @@ struct SyncServiceMergeTests {
         #expect(report.tasksInserted == 0)
     }
 
+    @Test func mergeDoesNotDeleteLocalColumnAbsentFromFile() throws {
+        let ctx = try makeContext()
+        let local = BoardColumn(name: "本地独有列", order: 0)
+        local.modifiedAt = Date(timeIntervalSince1970: 10)
+        ctx.insert(local)
+        try ctx.save()
+
+        // 文件只含一条无关任务,不含本地列 → 合并不得删除本地列
+        let task = TodoTask(title: "文件任务")
+        task.modifiedAt = Date(timeIntervalSince1970: 20)
+        let report = try SyncService.merge(docWith(tasks: [SyncTaskDTO(task)]),
+                                           into: ctx, includeSettings: false)
+
+        let all = try ctx.fetch(FetchDescriptor<BoardColumn>())
+        #expect(all.count == 1)
+        #expect(all.first?.id == local.id)
+        #expect(report.columnsInserted == 0)
+        #expect(report.columnsUpdated == 0)
+    }
+
     @Test func newerIncomingOverwritesLocal() throws {
         let ctx = try makeContext()
         let local = TodoTask(title: "旧标题")
