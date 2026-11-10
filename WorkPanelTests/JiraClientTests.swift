@@ -152,15 +152,30 @@ struct JiraClientTests {
     // MARK: - Epic 父链接
 
     @Test func parseExtractsEpicParentName() throws {
+        // 中文站:Epic 类型名为「长篇故事」,靠 hierarchyLevel 判定
         var j = issueJSON(key: "AAA-1")
         var f = j["fields"] as! [String: Any]
         f["parent"] = [
             "key": "AAA-100",
-            "fields": ["summary": "1.5 图形化改造", "issuetype": ["name": "Epic"]]
+            "fields": ["summary": "v1.5 · TUI 开发",
+                       "issuetype": ["name": "长篇故事", "hierarchyLevel": 1]]
         ] as [String: Any]
         j["fields"] = f
         let (issues, _) = try JiraClient.parseIssues(try responseData(issues: [j]))
-        #expect(issues.first?.epicName == "1.5 图形化改造")
+        #expect(issues.first?.epicName == "v1.5 · TUI 开发")
+    }
+
+    @Test func parseEpicByNameFallbackWhenHierarchyMissing() throws {
+        // hierarchyLevel 缺失时按类型名兜底(英文 Epic)
+        var j = issueJSON(key: "AAA-3")
+        var f = j["fields"] as! [String: Any]
+        f["parent"] = [
+            "key": "AAA-300",
+            "fields": ["summary": "v1.6 · ASR", "issuetype": ["name": "Epic"]]
+        ] as [String: Any]
+        j["fields"] = f
+        let (issues, _) = try JiraClient.parseIssues(try responseData(issues: [j]))
+        #expect(issues.first?.epicName == "v1.6 · ASR")
     }
 
     @Test func parseIgnoresNonEpicParent() throws {
@@ -168,7 +183,7 @@ struct JiraClientTests {
         var f = j["fields"] as! [String: Any]
         f["parent"] = [
             "key": "AAA-200",
-            "fields": ["summary": "某个普通父任务", "issuetype": ["name": "Story"]]
+            "fields": ["summary": "某个普通父任务", "issuetype": ["name": "Story", "hierarchyLevel": 0]]
         ] as [String: Any]
         j["fields"] = f
         let (issues, _) = try JiraClient.parseIssues(try responseData(issues: [j]))

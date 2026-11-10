@@ -191,17 +191,22 @@ private nonisolated struct ParentDTO: Codable {
 
 private nonisolated struct ParentFieldsDTO: Codable {
     var summary: String?
-    var issuetype: NameDTO?
+    var issuetype: ParentIssueTypeDTO?
 }
 
-private nonisolated struct NameDTO: Codable {
+private nonisolated struct ParentIssueTypeDTO: Codable {
     var name: String?
+    var hierarchyLevel: Int?   // Epic=1, Story/Task=0, Subtask=-1;与界面语言无关
 }
 
 private nonisolated extension FieldsDTO {
     /// 父级为 Epic 时返回其名称;父级缺失或非 Epic(如子任务的 Story 父)返回 nil。
+    /// 判定优先用 hierarchyLevel == 1(语言无关);缺失时退回类型名匹配(英文/中文站)。
     var epicParentName: String? {
-        guard parent?.fields?.issuetype?.name == "Epic" else { return nil }
-        return parent?.fields?.summary
+        guard let type = parent?.fields?.issuetype else { return nil }
+        let isEpic = type.hierarchyLevel == 1
+            || type.name == "Epic"
+            || type.name == "长篇故事"
+        return isEpic ? parent?.fields?.summary : nil
     }
 }
