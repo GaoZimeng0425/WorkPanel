@@ -320,11 +320,11 @@ struct JiraPullServiceTests {
     // MARK: - 状态→列映射(按项目)
 
     @Test func insertWithMappingLandsInColumn() async throws {
-        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
-        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
         defer {
-            UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
-            UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+            AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+            AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
         }
         let ctx = try makeContext()
         let cols = try seedColumns(["计划中", "开发中", "测试中"], in: ctx)
@@ -335,11 +335,11 @@ struct JiraPullServiceTests {
     }
 
     @Test func unmappedOrMissingColumnFallsBackToNil() async throws {
-        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
-        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
         defer {
-            UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
-            UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+            AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+            AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
         }
         let ctx = try makeContext()
         _ = try seedColumns(["计划中"], in: ctx)
@@ -356,8 +356,8 @@ struct JiraPullServiceTests {
     }
 
     @Test func statusChangeMovesUnmodifiedTask() async throws {
-        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
-        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping) }
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraColumnMapping) }
         let ctx = try makeContext()
         let cols = try seedColumns(["计划中", "开发中"], in: ctx)
         AppSettings.jiraColumnMapping = ["OC": ["待办": "计划中", "正在进行": "开发中"]]
@@ -371,8 +371,8 @@ struct JiraPullServiceTests {
     }
 
     @Test func locallyMovedTaskNotRelocatedByPull() async throws {
-        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
-        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping) }
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraColumnMapping) }
         let ctx = try makeContext()
         let cols = try seedColumns(["计划中", "开发中", "测试中"], in: ctx)
         AppSettings.jiraColumnMapping = ["OC": ["待办": "计划中", "正在进行": "开发中"]]
@@ -388,8 +388,8 @@ struct JiraPullServiceTests {
     }
 
     @Test func pullRecordsDiscoveredStatuses() async throws {
-        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
-        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses) }
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses) }
         let ctx = try makeContext()
         _ = await pull(FakeFetcher(scripts: [[issue(key: "OC-1", statusName: "正在进行"),
                                               issue(key: "AAA-2", statusName: "待办")]]), into: ctx)

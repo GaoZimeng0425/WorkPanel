@@ -5,7 +5,7 @@ import Foundation
 @MainActor
 struct AISettingsTests {
     private func clear() {
-        let d = UserDefaults.standard
+        let d = AppSettings.defaults
         d.removeObject(forKey: AppSettings.Key.aiBaseURL)
         d.removeObject(forKey: AppSettings.Key.aiModel)
         d.removeObject(forKey: AppSettings.Key.aiAPIKey)
@@ -21,7 +21,7 @@ struct AISettingsTests {
 
     @Test func aiConfigPersistsSetValues() {
         defer { clear() }
-        let d = UserDefaults.standard
+        let d = AppSettings.defaults
         d.set("https://api.openai.com/v1", forKey: AppSettings.Key.aiBaseURL)
         d.set("gpt-4o-mini", forKey: AppSettings.Key.aiModel)
         d.set("sk-test", forKey: AppSettings.Key.aiAPIKey)

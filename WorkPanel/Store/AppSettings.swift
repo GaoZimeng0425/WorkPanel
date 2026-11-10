@@ -2,7 +2,21 @@ import AppKit
 
 /// 全 App 的偏好持久化层。键集中定义,SwiftUI 控件用 @AppStorage 绑定相同键,
 /// 非视图消费方读取这里的类型化访问器。
+///
+/// `defaults`:测试宿主就是本 App,若直用 .standard,单测对映射/忽略表的读写会
+/// 污染真实配置(实测发生过:测试 defer 清键把用户映射删光)。测试进程改用隔离套件。
 enum AppSettings {
+    static let defaults: UserDefaults = {
+        let env = ProcessInfo.processInfo.environment
+        let inTests = env["XCTestConfigurationFilePath"] != nil
+            || env["XCTestBundlePath"] != nil
+            || env["WORKPANEL_TEST_DEFAULTS"] == "1"
+        guard inTests else { return .standard }
+        let suite = UserDefaults(suiteName: "WorkPanelTests") ?? .standard
+        suite.removePersistentDomain(forName: "WorkPanelTests")
+        return suite
+    }()
+
     enum Key {
         static let reminderLeadMinutes = "reminderLeadMinutes"
         static let appearance = "appearance"
@@ -30,7 +44,7 @@ enum AppSettings {
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
     static func registerDefaults() {
-        UserDefaults.standard.register(defaults: [
+        defaults.register(defaults: [
             Key.reminderLeadMinutes: 0,
             Key.appearance: Appearance.system.rawValue,
             Key.notificationSound: true,
@@ -45,42 +59,42 @@ enum AppSettings {
     }
 
     static var reminderLeadMinutes: Int {
-        UserDefaults.standard.integer(forKey: Key.reminderLeadMinutes)
+        defaults.integer(forKey: Key.reminderLeadMinutes)
     }
     static var notificationSound: Bool {
-        UserDefaults.standard.bool(forKey: Key.notificationSound)
+        defaults.bool(forKey: Key.notificationSound)
     }
     static var defaultPriority: Priority {
-        Priority(rawValue: UserDefaults.standard.integer(forKey: Key.defaultPriority)) ?? .medium
+        Priority(rawValue: defaults.integer(forKey: Key.defaultPriority)) ?? .medium
     }
     static var appearance: Appearance {
-        Appearance(rawValue: UserDefaults.standard.string(forKey: Key.appearance) ?? "") ?? .system
+        Appearance(rawValue: defaults.string(forKey: Key.appearance) ?? "") ?? .system
     }
     static var mcpEnabled: Bool {
-        UserDefaults.standard.bool(forKey: Key.mcpEnabled)
+        defaults.bool(forKey: Key.mcpEnabled)
     }
     static var mcpPort: Int {
-        let p = UserDefaults.standard.integer(forKey: Key.mcpPort)
+        let p = defaults.integer(forKey: Key.mcpPort)
         return p == 0 ? 8787 : p
     }
     static var mcpToken: String {
-        if let t = UserDefaults.standard.string(forKey: Key.mcpToken), !t.isEmpty { return t }
+        if let t = defaults.string(forKey: Key.mcpToken), !t.isEmpty { return t }
         let t = UUID().uuidString
-        UserDefaults.standard.set(t, forKey: Key.mcpToken)
+        defaults.set(t, forKey: Key.mcpToken)
         return t
     }
     static var boardHeight: CGFloat {
-        let h = UserDefaults.standard.double(forKey: Key.boardHeight)
+        let h = defaults.double(forKey: Key.boardHeight)
         return h == 0 ? 360 : CGFloat(h)
     }
     static var aiBaseURL: String {
-        UserDefaults.standard.string(forKey: Key.aiBaseURL) ?? ""
+        defaults.string(forKey: Key.aiBaseURL) ?? ""
     }
     static var aiModel: String {
-        UserDefaults.standard.string(forKey: Key.aiModel) ?? ""
+        defaults.string(forKey: Key.aiModel) ?? ""
     }
     static var aiAPIKey: String {
-        UserDefaults.standard.string(forKey: Key.aiAPIKey) ?? ""
+        defaults.string(forKey: Key.aiAPIKey) ?? ""
     }
     /// 三项配置齐全才算可用——AI 入口的显示门槛,与 AIRequest.build 的校验一致。
     static var aiConfigured: Bool {
@@ -89,23 +103,23 @@ enum AppSettings {
     /// 默认 JQL:当前用户的未完成事项,按更新时间倒序。
     static let defaultJQL = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
     static var jiraDomain: String {
-        let s = UserDefaults.standard.string(forKey: Key.jiraDomain) ?? ""
+        let s = defaults.string(forKey: Key.jiraDomain) ?? ""
         return s.isEmpty ? "antalpha.atlassian.net" : s
     }
     static var jiraEmail: String {
-        UserDefaults.standard.string(forKey: Key.jiraEmail) ?? ""
+        defaults.string(forKey: Key.jiraEmail) ?? ""
     }
     static var jiraAPIToken: String {
-        UserDefaults.standard.string(forKey: Key.jiraAPIToken) ?? ""
+        defaults.string(forKey: Key.jiraAPIToken) ?? ""
     }
     static var jiraJQL: String {
-        let s = UserDefaults.standard.string(forKey: Key.jiraJQL) ?? ""
+        let s = defaults.string(forKey: Key.jiraJQL) ?? ""
         return s.isEmpty ? defaultJQL : s
     }
     /// 三项配置齐全才算可用——Jira 入口的显示门槛。
     /// 自动拉取间隔(分钟);0 = 关闭。
     static var jiraAutoPullMinutes: Int {
-        let m = UserDefaults.standard.integer(forKey: Key.jiraAutoPullMinutes)
+        let m = defaults.integer(forKey: Key.jiraAutoPullMinutes)
         return max(0, m)
     }
     static var jiraConfigured: Bool {
@@ -113,15 +127,15 @@ enum AppSettings {
     }
     /// 本机已 dismiss 的 Jira 任务键(denylist,不随导出走)。
     static var jiraDismissedKeys: [String] {
-        UserDefaults.standard.stringArray(forKey: Key.jiraDismissedKeys) ?? []
+        defaults.stringArray(forKey: Key.jiraDismissedKeys) ?? []
     }
     static func jiraDismiss(_ key: String) {
         var keys = jiraDismissedKeys
         if !keys.contains(key) { keys.append(key) }
-        UserDefaults.standard.set(keys, forKey: Key.jiraDismissedKeys)
+        defaults.set(keys, forKey: Key.jiraDismissedKeys)
     }
     static func jiraResetDismissed() {
-        UserDefaults.standard.removeObject(forKey: Key.jiraDismissedKeys)
+        defaults.removeObject(forKey: Key.jiraDismissedKeys)
     }
 }
 
@@ -135,7 +149,7 @@ extension AppSettings {
     /// 项目 → (状态名 → 看板列名)。每机配置,不进导出白名单。
     static var jiraColumnMapping: [String: [String: String]] {
         get {
-            guard let raw = UserDefaults.standard.string(forKey: Key.jiraColumnMapping),
+            guard let raw = defaults.string(forKey: Key.jiraColumnMapping),
                   let dict = try? JSONDecoder().decode([String: [String: String]].self,
                                                        from: Data(raw.utf8)) else { return [:] }
             return dict
@@ -143,14 +157,14 @@ extension AppSettings {
         set {
             guard let data = try? JSONEncoder().encode(newValue),
                   let raw = String(data: data, encoding: .utf8) else { return }
-            UserDefaults.standard.set(raw, forKey: Key.jiraColumnMapping)
+            defaults.set(raw, forKey: Key.jiraColumnMapping)
         }
     }
 
     /// 最近一次拉取见过的 (项目, 状态),整体替换。
     static var jiraDiscoveredStatuses: [JiraDiscoveredStatus] {
         get {
-            guard let raw = UserDefaults.standard.string(forKey: Key.jiraDiscoveredStatuses),
+            guard let raw = defaults.string(forKey: Key.jiraDiscoveredStatuses),
                   let list = try? JSONDecoder().decode([JiraDiscoveredStatus].self,
                                                        from: Data(raw.utf8)) else { return [] }
             return list
@@ -158,7 +172,7 @@ extension AppSettings {
         set {
             guard let data = try? JSONEncoder().encode(newValue),
                   let raw = String(data: data, encoding: .utf8) else { return }
-            UserDefaults.standard.set(raw, forKey: Key.jiraDiscoveredStatuses)
+            defaults.set(raw, forKey: Key.jiraDiscoveredStatuses)
         }
     }
 }

@@ -113,8 +113,8 @@ struct TodoStoreTests {
 
     /// 删除带 jiraKey 的任务 → 记入 denylist(拉取不再插入);普通任务删除不记录。
     @Test func deleteRecordsJiraKeyInDenylist() throws {
-        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDismissedKeys)
-        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDismissedKeys) }
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDismissedKeys)
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDismissedKeys) }
         let store = try makeStore()
         let jiraTask = TodoTask(title: "[PROJ-9] 远端任务")
         jiraTask.jiraKey = "PROJ-9"

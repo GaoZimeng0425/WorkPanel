@@ -136,6 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         jiraAutoPullTimer?.invalidate()
         jiraAutoPullTimer = nil
         let minutes = AppSettings.jiraAutoPullMinutes
+        LogService.debug("autoPull minutes=\(minutes) configured=\(AppSettings.jiraConfigured)", category: "Jira")
         guard minutes > 0, AppSettings.jiraConfigured else { return }
         jiraAutoPullTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(minutes * 60), repeats: true) { _ in
             Task { @MainActor in
@@ -162,9 +163,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mcpServer?.stop()
         mcpServer = nil
         startOrStopMCP()
-        NotificationCenter.default.addObserver(forName: .jiraSettingsChanged, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.restartJiraAutoPull() }
-        }
-        restartJiraAutoPull()
     }
 }
