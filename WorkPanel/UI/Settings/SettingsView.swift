@@ -18,9 +18,6 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.aiBaseURL) private var aiBaseURL = ""
     @AppStorage(AppSettings.Key.aiModel) private var aiModel = ""
     @AppStorage(AppSettings.Key.aiAPIKey) private var aiAPIKey = ""
-    @AppStorage(AppSettings.Key.lanSyncEnabled) private var lanSyncEnabled = false
-    @AppStorage(AppSettings.Key.lanSyncPairingCode) private var lanSyncPairingCode = ""
-    @State private var lanStatus = LANSyncStatus.shared
 
     @State private var selectedTab: SettingsTab = .shortcuts
 
@@ -37,7 +34,7 @@ struct SettingsView: View {
 
     /// 左侧 tab。rawValue 仅作 Identifiable 用,不持久化。
     private enum SettingsTab: String, CaseIterable, Identifiable {
-        case shortcuts, general, reminder, mcp, ai, lan
+        case shortcuts, general, reminder, mcp, ai
         var id: String { rawValue }
         var label: String {
             switch self {
@@ -46,7 +43,6 @@ struct SettingsView: View {
             case .reminder:  "提醒"
             case .mcp:       "AI 接入"
             case .ai:        "AI 助手"
-            case .lan:       "局域网同步"
             }
         }
         var icon: String {
@@ -56,7 +52,6 @@ struct SettingsView: View {
             case .reminder:  "bell"
             case .mcp:       "network"
             case .ai:        "sparkles"
-            case .lan:       "wifi"
             }
         }
     }
@@ -292,7 +287,6 @@ struct SettingsView: View {
         case .reminder:  reminderSection
         case .mcp:       mcpSection
         case .ai:        aiSection
-        case .lan:       lanSection
         }
     }
 
@@ -459,49 +453,6 @@ struct SettingsView: View {
                     AIPromptListView()
                 }
             }
-    }
-
-    private var lanSection: some View {
-        section("局域网同步", systemImage: "wifi") {
-            row("启用", systemImage: "antenna.radiowaves.left.and.right") {
-                Toggle("", isOn: $lanSyncEnabled)
-                    .labelsHidden().toggleStyle(.switch)
-                    .onChange(of: lanSyncEnabled) { _, _ in
-                        NotificationCenter.default.post(name: .lanSyncSettingsChanged, object: nil)
-                    }
-            }
-            divider
-            row("配对码", systemImage: "key") {
-                HStack(spacing: 8) {
-                    TextField("两台 Mac 填同一个", text: $lanSyncPairingCode)
-                        .labelsHidden().frame(width: 180)
-                        .multilineTextAlignment(.trailing)
-                        .onSubmit {
-                            NotificationCenter.default.post(name: .lanSyncSettingsChanged, object: nil)
-                        }
-                    Button("生成") {
-                        lanSyncPairingCode = String(UUID().uuidString.prefix(8))
-                        NotificationCenter.default.post(name: .lanSyncSettingsChanged, object: nil)
-                    }
-                    .buttonStyle(NoirPillButtonStyle())
-                }
-            }
-            divider
-            row("状态", systemImage: "dot.radiowaves.left.and.right") {
-                Text(lanStatus.isRunning ? "运行中" : "已停止")
-                    .font(.callout).foregroundStyle(Theme.textSecondary)
-            }
-            divider
-            row("已发现设备", systemImage: "laptopcomputer") {
-                Text(lanStatus.peerNames.isEmpty ? "无" : lanStatus.peerNames.joined(separator: "、"))
-                    .font(.callout).foregroundStyle(Theme.textSecondary)
-            }
-            divider
-            row("上次同步", systemImage: "clock.arrow.2.circlepath") {
-                Text(lanStatus.lastSync)
-                    .font(.callout).foregroundStyle(Theme.textSecondary)
-            }
-        }
     }
 
     // MARK: - 分组卡片与行
