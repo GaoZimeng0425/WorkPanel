@@ -26,11 +26,13 @@ struct JiraPullServiceTests {
                   priorityName: priorityName, duedateDay: duedateDay, descriptionText: descriptionText)
     }
 
-    /// 按脚本逐次返回;记录每次收到的 jql。首查可配置抛错。
+    /// 按脚本逐次返回;记录每次收到的 jql。首查可配置抛错;可设截断标志与第 2 次调用钩子。
     actor FakeFetcher: JiraFetching {
         private var scripts: [[JiraIssue]] = []
         private var _calls: [String] = []
         private var firstThrows: Error?
+        private var truncationFlag = false
+        private var secondCallHook: (@MainActor @Sendable () -> Void)?
 
         init(scripts: [[JiraIssue]] = [], firstThrows: Error? = nil) {
             self.scripts = scripts
@@ -44,10 +46,19 @@ struct JiraPullServiceTests {
             scripts.append(contentsOf: pages)
         }
 
-        func search(jql: String) async throws -> [JiraIssue] {
+        func setTruncation(_ flag: Bool) { truncationFlag = flag }
+
+        /// 第 2 次 search 返回前在 MainActor 执行(模拟拉取途中用户操作)。
+        func onSecondCall(_ hook: @escaping @MainActor @Sendable () -> Void) {
+            secondCallHook = hook
+        }
+
+        func search(jql: String) async throws -> JiraSearchResult {
             _calls.append(jql)
             if let e = firstThrows { firstThrows = nil; throw e }
-            return scripts.isEmpty ? [] : scripts.removeFirst()
+            let page = scripts.isEmpty ? [] : scripts.removeFirst()
+            if _calls.count == 2, let hook = secondCallHook { await hook() }
+            return JiraSearchResult(issues: page, truncated: truncationFlag)
         }
     }
 
@@ -245,5 +256,35 @@ struct JiraPullServiceTests {
         let cal = Calendar.current
         let dayStart = cal.date(from: DateComponents(year: 2026, month: 11, day: 20))!
         #expect(t.deadline == cal.date(byAdding: DateComponents(hour: 23, minute: 59), to: dayStart))
+    }
+
+    // MARK: - 截断反馈
+
+    @Test func truncatedFetchPropagatesToReport() async throws {
+        let ctx = try makeContext()
+        let fetcher = FakeFetcher(scripts: [[issue(key: "A-1")]])
+        await fetcher.setTruncation(true)
+        let r = await pull(fetcher, into: ctx)
+        #expect(r.truncated == true)
+        #expect(r.inserted == 1)
+    }
+
+    // MARK: - 拉取途中的并发删除
+
+    /// 二段查询 await 期间任务被删除:不得复活、不得改写已删除模型、completed == 0。
+    @Test func secondQuerySkipsTaskDeletedDuringPull() async throws {
+        let ctx = try makeContext()
+        let t = TodoTask(title: "[A-1] 本地任务")
+        t.jiraKey = "A-1"
+        ctx.insert(t)
+        try ctx.save()
+        let fetcher = FakeFetcher(scripts: [[], [issue(key: "A-1", statusCategoryKey: "Done")]])
+        await fetcher.onSecondCall {
+            ctx.delete(t)
+            try? ctx.save()
+        }
+        let r = await pull(fetcher, into: ctx)
+        #expect(r.completed == 0)
+        #expect(try allTasks(ctx).isEmpty)
     }
 }

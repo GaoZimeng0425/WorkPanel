@@ -6,6 +6,7 @@ struct JiraPullReport: Equatable {
     var updated = 0        // 远端字段更新
     var completed = 0      // 既有任务被标完成(新建即完成计 inserted)
     var skipped = 0        // 本地优先跳过(含本地已完成)
+    var truncated = false  // JQL 结果超分页上限(5×50),只拉了前一部分
     var failedMessage: String?
 }
 
@@ -26,13 +27,15 @@ struct JiraPullService {
         var report = JiraPullReport()
         let dismissed = Set(dismissedKeys)
 
-        let remote: [JiraIssue]
+        let remoteResult: JiraSearchResult
         do {
-            remote = try await fetcher.search(jql: AppSettings.jiraJQL)
+            remoteResult = try await fetcher.search(jql: AppSettings.jiraJQL)
         } catch {
             report.failedMessage = "拉取失败:\(error.localizedDescription)"
             return report
         }
+        report.truncated = remoteResult.truncated
+        let remote = remoteResult.issues
 
         // 本地 jiraKey 索引;同 key 多条取 createdAt 最早为目标
         let tasks = (try? context.fetch(FetchDescriptor<TodoTask>())) ?? []
@@ -77,10 +80,15 @@ struct JiraPullService {
         if !absent.isEmpty {
             let jql = "issuekey IN (" + absent.joined(separator: ", ") + ")"
             if let statuses = try? await fetcher.search(jql: jql) {
-                for st in statuses where st.statusCategoryKey == "Done" {
-                    guard let local = targetByKey[st.key], !local.isCompleted else { continue }
-                    markCompleted(local, now: now)
-                    report.completed += 1
+                let doneKeys = Set(statuses.issues.filter { $0.statusCategoryKey == "Done" }.map(\.key))
+                if !doneKeys.isEmpty {
+                    // await 期间用户可能删除过任务:重新 fetch,拿到的都是活实例(已删的自然不在)
+                    let live = (try? context.fetch(FetchDescriptor<TodoTask>())) ?? []
+                    for local in live where local.jiraKey.map(doneKeys.contains) == true {
+                        guard !local.isCompleted else { continue }
+                        markCompleted(local, now: now)
+                        report.completed += 1
+                    }
                 }
             }
         }

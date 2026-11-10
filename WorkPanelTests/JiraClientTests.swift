@@ -97,9 +97,9 @@ struct JiraClientTests {
         #expect(token == "next-abc")
     }
 
-    // MARK: - search 分页上限
+    // MARK: - search 分页上限与截断反馈
 
-    /// 注入单页请求替身:每次返回 50 条 + nextPageToken;search 应在 5 页(250 条)后停止。
+    /// 注入单页请求替身:每次返回 50 条 + nextPageToken;search 应在 5 页(250 条)后停止并报告截断。
     @Test func paginationCapStopsAtFivePages() async throws {
         final class Counter: @unchecked Sendable {
             private let lock = NSLock()
@@ -115,8 +115,55 @@ struct JiraClientTests {
             counter.bump()
             return pageData
         }
-        let issues = try await client.search(jql: "assignee = currentUser()")
-        #expect(issues.count == 250)
+        let result = try await client.search(jql: "assignee = currentUser()")
+        #expect(result.issues.count == 250)
         #expect(counter.count == 5)
+        #expect(result.truncated == true)   // 仍有下一页但已到上限
+    }
+
+    @Test func searchWithoutMorePagesIsNotTruncated() async throws {
+        let pageData = try responseData(issues: [issueJSON(key: "K-1")])   // 无 nextPageToken
+        let client = JiraClient { _ in pageData }
+        let result = try await client.search(jql: "x")
+        #expect(result.issues.count == 1)
+        #expect(result.truncated == false)
+    }
+
+    // MARK: - 域名校验
+
+    @Test func searchOnInvalidDomainThrowsWithoutNetwork() async throws {
+        // 含空格的域名(如粘贴带了尾随空格或敲错)不得让 URL(string:)! 崩掉整个 app
+        let client = JiraClient(domain: "antalpha atlassian net", email: "e", apiToken: "t")
+        await #expect(throws: JiraError.self) {
+            _ = try await client.search(jql: "x")
+        }
+    }
+
+    @Test func normalizedDomainTrimsAndStripsScheme() throws {
+        #expect(JiraClient.normalizedDomain("  https://antalpha.atlassian.net/ ") == "antalpha.atlassian.net")
+        #expect(JiraClient.normalizedDomain("antalpha.atlassian.net") == "antalpha.atlassian.net")
+        #expect(JiraClient.normalizedDomain("bad domain") == nil)
+    }
+
+    // MARK: - 嵌套 ADF
+
+    @Test func parseExtractsNestedListItemsWithSeparators() throws {
+        // bulletList → listItem → paragraph 的嵌套块:文本之间要有分隔,不能粘成一串
+        let list: [String: Any] = [
+            "type": "doc",
+            "content": [
+                ["type": "bulletList", "content": [
+                    ["type": "listItem", "content": [
+                        ["type": "paragraph", "content": [["type": "text", "text": "步骤一"]]],
+                    ]],
+                    ["type": "listItem", "content": [
+                        ["type": "paragraph", "content": [["type": "text", "text": "步骤二"]]],
+                    ]],
+                ]],
+            ]
+        ]
+        let data = try responseData(issues: [issueJSON(key: "X-9", description: list)])
+        let (issues, _) = try JiraClient.parseIssues(data)
+        #expect(issues.first?.descriptionText == "步骤一\n步骤二")
     }
 }

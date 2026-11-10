@@ -524,7 +524,9 @@ struct SettingsView: View {
             if let msg = report.failedMessage {
                 Notice.show(msg)
             } else {
-                Notice.show("Jira 拉取:新增 \(report.inserted) · 更新 \(report.updated) · 完成 \(report.completed) · 跳过 \(report.skipped)")
+                var text = "Jira 拉取:新增 \(report.inserted) · 更新 \(report.updated) · 完成 \(report.completed) · 跳过 \(report.skipped)"
+                if report.truncated { text += " · 结果超 250 条已截断" }
+                Notice.show(text)
             }
         }
     }

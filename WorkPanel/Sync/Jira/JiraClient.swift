@@ -10,17 +10,25 @@ nonisolated struct JiraIssue: Equatable, Sendable {
     var descriptionText: String?  // ADF 提取的纯文本;无 description 时 nil
 }
 
+/// search 结果:issues + 是否因分页上限截断。
+nonisolated struct JiraSearchResult: Equatable, Sendable {
+    var issues: [JiraIssue]
+    var truncated: Bool = false
+}
+
 nonisolated protocol JiraFetching: Sendable {
-    /// 内部按 nextPageToken 分页,上限 5 页 × 50 条。
-    func search(jql: String) async throws -> [JiraIssue]
+    /// 内部按 nextPageToken 分页,上限 5 页 × 50 条,超出置 truncated。
+    func search(jql: String) async throws -> JiraSearchResult
 }
 
 nonisolated enum JiraError: LocalizedError {
+    case invalidDomain
     case unauthorized
     case http(Int)
 
     var errorDescription: String? {
         switch self {
+        case .invalidDomain: "Jira 域名无效"
         case .unauthorized: "邮箱/API Token 无效(401)"
         case .http(let code): "Jira 请求失败(HTTP \(code))"
         }
@@ -39,9 +47,13 @@ nonisolated struct JiraClient: JiraFetching {
     private let send: PageSender
 
     init(domain: String, email: String, apiToken: String) {
-        let url = URL(string: "https://\(domain)/rest/api/3/search/jql")!
+        let normalized = Self.normalizedDomain(domain)
         let auth = Data("\(email):\(apiToken)".utf8).base64EncodedString()
         send = { body in
+            guard let normalized,
+                  let url = URL(string: "https://\(normalized)/rest/api/3/search/jql") else {
+                throw JiraError.invalidDomain
+            }
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -59,7 +71,7 @@ nonisolated struct JiraClient: JiraFetching {
     /// 测试用初始化:替身直接产出响应体。
     init(pageSender: @escaping PageSender) { send = pageSender }
 
-    func search(jql: String) async throws -> [JiraIssue] {
+    func search(jql: String) async throws -> JiraSearchResult {
         var all: [JiraIssue] = []
         var token: String? = nil
         for _ in 0..<Self.maxPages {
@@ -67,10 +79,21 @@ nonisolated struct JiraClient: JiraFetching {
             if let t = token { body["nextPageToken"] = t }
             let (issues, next) = try Self.parseIssues(try await send(body))
             all.append(contentsOf: issues)
-            guard let n = next else { break }
+            guard let n = next else { return JiraSearchResult(issues: all) }
             token = n
         }
-        return all
+        return JiraSearchResult(issues: all, truncated: true)   // 仍有下一页,已到分页上限
+    }
+
+    // MARK: - 域名清洗
+
+    /// 去首尾空白与协议前缀/尾斜杠;空串或含非法字符(URL 无法构造)返回 nil,不碰网络。
+    static func normalizedDomain(_ raw: String) -> String? {
+        var d = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        for prefix in ["https://", "http://"] where d.hasPrefix(prefix) { d.removeFirst(prefix.count) }
+        while d.hasSuffix("/") { d.removeLast() }
+        guard !d.isEmpty, URL(string: "https://\(d)") != nil else { return nil }
+        return d
     }
 
     // MARK: - 解析
@@ -90,15 +113,30 @@ nonisolated struct JiraClient: JiraFetching {
         return (issues, resp.nextPageToken)
     }
 
-    /// ADF(Atlassian Document Format)→ 纯文本:文本叶子直接拼接,
-    /// 根的直接子节点(段落等)各成一段,段间以 "\n\n" 连接。
+    /// 子节点之间用 "\n" 连接的类型(列表/表格/引用等块容器);doc 用 "\n\n";
+    /// 其余(paragraph 行内、heading、行内包装)子节点直接拼接。
+    private static let newlineChildTypes: Set<String> = [
+        "bulletList", "orderedList", "listItem", "codeBlock", "blockquote", "panel",
+        "table", "tableRow", "tableCell", "tableHeader",
+    ]
+
+    /// ADF(Atlassian Document Format)→ 纯文本:
+    /// 行内文本叶子直接拼接;嵌套块级子节点之间以 "\n" 分隔;根(doc)的直接子节点之间以 "\n\n" 分隔。
     static func adfPlainText(_ node: ADFNode) -> String {
-        func inline(_ n: ADFNode) -> String {
-            var s = n.text ?? ""
-            for c in n.content ?? [] { s += inline(c) }
-            return s
+        func childSeparator(of type: String?) -> String {
+            if type == "doc" { return "\n\n" }
+            return Self.newlineChildTypes.contains(type ?? "") ? "\n" : ""
         }
-        return (node.content ?? []).map(inline).filter { !$0.isEmpty }.joined(separator: "\n\n")
+        func render(_ n: ADFNode) -> String {
+            let separator = childSeparator(of: n.type)
+            var parts: [String] = []
+            for child in n.content ?? [] {
+                let piece = child.type == "text" ? (child.text ?? "") : render(child)
+                if !piece.isEmpty { parts.append(piece) }
+            }
+            return parts.joined(separator: separator)
+        }
+        return render(node)
     }
 }
 
