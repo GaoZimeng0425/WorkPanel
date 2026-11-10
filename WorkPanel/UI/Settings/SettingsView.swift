@@ -24,6 +24,9 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.jiraJQL) private var jiraJQL = ""
     @State private var isPulling = false
     @State private var dismissedKeys: [String] = AppSettings.jiraDismissedKeys
+    @State private var discovered: [JiraDiscoveredStatus] = AppSettings.jiraDiscoveredStatuses
+    @State private var columnMapping: [String: [String: String]] = AppSettings.jiraColumnMapping
+    @Query(sort: \BoardColumn.order) private var boardColumns: [BoardColumn]
 
     @State private var selectedTab: SettingsTab = .shortcuts
 
@@ -491,6 +494,38 @@ struct SettingsView: View {
             .font(.callout)
             .foregroundStyle(Theme.textSecondary)
             divider
+            VStack(alignment: .leading, spacing: 8) {
+                Text("状态 → 列映射")
+                    .font(.callout.weight(.semibold)).foregroundStyle(Theme.textSecondary)
+                if discovered.isEmpty {
+                    Text("拉取一次后,这里会按项目列出出现过的状态")
+                        .font(.callout).foregroundStyle(Theme.textTertiary)
+                } else {
+                    let projects = Dictionary(grouping: discovered, by: \.project)
+                        .sorted { $0.key < $1.key }
+                    ForEach(projects, id: \.key) { project, statuses in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(project)
+                                .font(.callout.weight(.bold)).foregroundStyle(Theme.textPrimary)
+                            ForEach(statuses, id: \.self) { ds in
+                                HStack {
+                                    Text(ds.status)
+                                        .font(.callout).foregroundStyle(Theme.textSecondary)
+                                    Spacer()
+                                    Picker("", selection: mappingBinding(project: ds.project, status: ds.status)) {
+                                        Text("不映射").tag("")
+                                        ForEach(boardColumns) { col in
+                                            Text(col.name).tag(col.name)
+                                        }
+                                    }
+                                    .labelsHidden().fixedSize()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            divider
             row("拉取", systemImage: "arrow.down.circle") {
                 Button(isPulling ? "拉取中…" : "立即拉取") { runJiraPull() }
                     .buttonStyle(NoirPillButtonStyle(prominent: true))
@@ -509,6 +544,22 @@ struct SettingsView: View {
         }
     }
 
+    /// (项目,状态) → 列名 的双向绑定;空串 = 不映射(删除该键),写穿到 UserDefaults。
+    private func mappingBinding(project: String, status: String) -> Binding<String> {
+        Binding(
+            get: { columnMapping[project]?[status] ?? "" },
+            set: { newValue in
+                var mapping = columnMapping
+                var byStatus = mapping[project] ?? [:]
+                if newValue.isEmpty { byStatus.removeValue(forKey: status) }
+                else { byStatus[status] = newValue }
+                mapping[project] = byStatus
+                columnMapping = mapping
+                AppSettings.jiraColumnMapping = mapping
+            }
+        )
+    }
+
     private func runJiraPull() {
         guard !isPulling else { return }
         isPulling = true
@@ -521,6 +572,7 @@ struct SettingsView: View {
                    dismissedKeys: AppSettings.jiraDismissedKeys)
             isPulling = false
             dismissedKeys = AppSettings.jiraDismissedKeys
+            discovered = AppSettings.jiraDiscoveredStatuses
             if let msg = report.failedMessage {
                 Notice.show(msg)
             } else {

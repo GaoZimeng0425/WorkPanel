@@ -22,7 +22,9 @@ enum AppSettings {
         static let jiraEmail = "jiraEmail"
         static let jiraAPIToken = "jiraAPIToken"   // 明文,与 aiAPIKey 一致
         static let jiraJQL = "jiraJQL"
-        static let jiraDismissedKeys = "jiraDismissedKeys"   // [String],本机 dismiss 状态,不导出
+        static let jiraDismissedKeys = "jiraDismissedKeys"
+        static let jiraColumnMapping = "jiraColumnMapping"       // JSON: [项目:[状态:列名]]
+        static let jiraDiscoveredStatuses = "jiraDiscoveredStatuses" // JSON: [JiraDiscoveredStatus]   // [String],本机 dismiss 状态,不导出
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
@@ -113,6 +115,44 @@ enum AppSettings {
     }
     static func jiraResetDismissed() {
         UserDefaults.standard.removeObject(forKey: Key.jiraDismissedKeys)
+    }
+}
+
+/// 拉取时发现过的 (项目, 状态) 对,供设置面板渲染映射行。
+struct JiraDiscoveredStatus: Codable, Hashable, Sendable {
+    var project: String
+    var status: String
+}
+
+extension AppSettings {
+    /// 项目 → (状态名 → 看板列名)。每机配置,不进导出白名单。
+    static var jiraColumnMapping: [String: [String: String]] {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: Key.jiraColumnMapping),
+                  let dict = try? JSONDecoder().decode([String: [String: String]].self,
+                                                       from: Data(raw.utf8)) else { return [:] }
+            return dict
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue),
+                  let raw = String(data: data, encoding: .utf8) else { return }
+            UserDefaults.standard.set(raw, forKey: Key.jiraColumnMapping)
+        }
+    }
+
+    /// 最近一次拉取见过的 (项目, 状态),整体替换。
+    static var jiraDiscoveredStatuses: [JiraDiscoveredStatus] {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: Key.jiraDiscoveredStatuses),
+                  let list = try? JSONDecoder().decode([JiraDiscoveredStatus].self,
+                                                       from: Data(raw.utf8)) else { return [] }
+            return list
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue),
+                  let raw = String(data: data, encoding: .utf8) else { return }
+            UserDefaults.standard.set(raw, forKey: Key.jiraDiscoveredStatuses)
+        }
     }
 }
 

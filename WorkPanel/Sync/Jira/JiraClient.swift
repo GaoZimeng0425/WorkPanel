@@ -4,7 +4,9 @@ import Foundation
 nonisolated struct JiraIssue: Equatable, Sendable {
     var key: String               // "PROJ-123"
     var summary: String
+    var statusName: String        // "待办" / "正在进行" …;状态→列映射用
     var statusCategoryKey: String // "Done" / "Indeterminate" / "New";缺省为空串(非 Done)
+    var projectKey: String        // "OC"(从 key 前缀解析)
     var priorityName: String?     // priority 缺失时 nil
     var duedateDay: String?       // "2026-11-20" 原样;缺省 nil
     var descriptionText: String?  // ADF 提取的纯文本;无 description 时 nil
@@ -104,7 +106,9 @@ nonisolated struct JiraClient: JiraFetching {
             JiraIssue(
                 key: dto.key,
                 summary: dto.fields?.summary ?? "",
+                statusName: dto.fields?.status?.name ?? "",
                 statusCategoryKey: dto.fields?.status?.statusCategory?.key ?? "",
+                projectKey: String(dto.key.split(separator: "-").first ?? ""),
                 priorityName: dto.fields?.priority?.name,
                 duedateDay: dto.fields?.duedate,
                 descriptionText: dto.fields?.description.map(adfPlainText)
@@ -166,6 +170,7 @@ private nonisolated struct FieldsDTO: Codable {
 }
 
 private nonisolated struct StatusDTO: Codable {
+    var name: String?
     var statusCategory: StatusCategoryDTO?
 }
 

@@ -10,12 +10,13 @@ struct JiraClientTests {
     private func issueJSON(key: String,
                            summary: String? = "标题",
                            statusCategory: String? = "Indeterminate",
+                           statusName: String? = "待办",
                            priority: String? = "Medium",
                            duedate: String? = nil,
                            description: [String: Any]? = nil) -> [String: Any] {
         var fields: [String: Any] = ["summary": summary ?? ""]
         if let sc = statusCategory {
-            fields["status"] = ["statusCategory": ["key": sc]]
+            fields["status"] = ["name": statusName ?? "", "statusCategory": ["key": sc]]
         }
         if let p = priority {
             fields["priority"] = ["name": p]
@@ -46,6 +47,7 @@ struct JiraClientTests {
             key: "PROJ-123",
             summary: "修复登录超时",
             statusCategory: "Done",
+            statusName: "已解决",
             priority: "High",
             duedate: "2026-11-20",
             description: para("描述第一段")
@@ -57,6 +59,8 @@ struct JiraClientTests {
         #expect(i.key == "PROJ-123")
         #expect(i.summary == "修复登录超时")
         #expect(i.statusCategoryKey == "Done")
+        #expect(i.statusName == "已解决")
+        #expect(i.projectKey == "PROJ")
         #expect(i.priorityName == "High")
         #expect(i.duedateDay == "2026-11-20")
         #expect(i.descriptionText == "描述第一段")

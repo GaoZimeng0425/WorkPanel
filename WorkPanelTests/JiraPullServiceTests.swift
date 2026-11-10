@@ -4,6 +4,8 @@ import SwiftData
 @testable import WorkPanel
 
 /// JiraPullService 合并规则测试:in-memory 容器 + 脚本化 fake fetcher,不发网络。
+/// .serialized:多个用例共享 UserDefaults 的映射键,必须串行避免互踩。
+@Suite(.serialized)
 @MainActor
 struct JiraPullServiceTests {
 
@@ -19,11 +21,21 @@ struct JiraPullServiceTests {
     private func issue(key: String,
                        summary: String = "远端标题",
                        statusCategoryKey: String = "Indeterminate",
+                       statusName: String = "待办",
                        priorityName: String? = "Medium",
                        duedateDay: String? = nil,
                        descriptionText: String? = nil) -> JiraIssue {
-        JiraIssue(key: key, summary: summary, statusCategoryKey: statusCategoryKey,
+        JiraIssue(key: key, summary: summary, statusName: statusName,
+                  statusCategoryKey: statusCategoryKey,
+                  projectKey: String(key.split(separator: "-").first ?? ""),
                   priorityName: priorityName, duedateDay: duedateDay, descriptionText: descriptionText)
+    }
+
+    private func seedColumns(_ names: [String], in ctx: ModelContext) throws -> [BoardColumn] {
+        let cols = names.enumerated().map { BoardColumn(name: $1, order: $0) }
+        cols.forEach { ctx.insert($0) }
+        try ctx.save()
+        return cols
     }
 
     /// 按脚本逐次返回;记录每次收到的 jql。首查可配置抛错;可设截断标志与第 2 次调用钩子。
@@ -286,5 +298,85 @@ struct JiraPullServiceTests {
         let r = await pull(fetcher, into: ctx)
         #expect(r.completed == 0)
         #expect(try allTasks(ctx).isEmpty)
+    }
+
+    // MARK: - 状态→列映射(按项目)
+
+    @Test func insertWithMappingLandsInColumn() async throws {
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+        defer {
+            UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+            UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+        }
+        let ctx = try makeContext()
+        let cols = try seedColumns(["计划中", "开发中", "测试中"], in: ctx)
+        AppSettings.jiraColumnMapping = ["OC": ["正在进行": "开发中"]]
+        _ = await pull(FakeFetcher(scripts: [[issue(key: "OC-1", statusName: "正在进行")]]), into: ctx)
+        let t = try #require(try allTasks(ctx).first)
+        #expect(t.columnID == cols[1].id)
+    }
+
+    @Test func unmappedOrMissingColumnFallsBackToNil() async throws {
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+        defer {
+            UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+            UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+        }
+        let ctx = try makeContext()
+        _ = try seedColumns(["计划中"], in: ctx)
+        AppSettings.jiraColumnMapping = ["OC": ["待办": "计划中", "正在进行": "不存在的列"]]
+        let r = await pull(FakeFetcher(scripts: [[issue(key: "OC-1", statusName: "待办"),
+                                                  issue(key: "OC-2", statusName: "正在进行")]]), into: ctx)
+        #expect(r.inserted == 2)
+        let byKey = Dictionary(uniqueKeysWithValues: try allTasks(ctx).map { ($0.jiraKey!, $0) })
+        #expect(byKey["OC-1"]?.columnID != nil)          // 命中映射
+        #expect(byKey["OC-2"]?.columnID == nil)          // 列名不存在 → nil(显示回退第一列)
+        // 未映射状态(AAA 项目无映射)→ nil
+        _ = await pull(FakeFetcher(scripts: [[issue(key: "AAA-1", statusName: "REVIEWING")]]), into: ctx)
+        #expect(try allTasks(ctx).first { $0.jiraKey == "AAA-1" }?.columnID == nil)
+    }
+
+    @Test func statusChangeMovesUnmodifiedTask() async throws {
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping) }
+        let ctx = try makeContext()
+        let cols = try seedColumns(["计划中", "开发中"], in: ctx)
+        AppSettings.jiraColumnMapping = ["OC": ["待办": "计划中", "正在进行": "开发中"]]
+        let fetcher = FakeFetcher(scripts: [[issue(key: "OC-1", statusName: "待办")]])
+        _ = await pull(fetcher, into: ctx, now: Date(timeIntervalSince1970: 1000))
+        let t = try #require(try allTasks(ctx).first)
+        #expect(t.columnID == cols[0].id)
+        await fetcher.schedules([issue(key: "OC-1", statusName: "正在进行")])
+        _ = await pull(fetcher, into: ctx, now: Date(timeIntervalSince1970: 2000))
+        #expect(t.columnID == cols[1].id)   // Jira 状态变化 → 挪列
+    }
+
+    @Test func locallyMovedTaskNotRelocatedByPull() async throws {
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping)
+        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraColumnMapping) }
+        let ctx = try makeContext()
+        let cols = try seedColumns(["计划中", "开发中", "测试中"], in: ctx)
+        AppSettings.jiraColumnMapping = ["OC": ["待办": "计划中", "正在进行": "开发中"]]
+        let fetcher = FakeFetcher(scripts: [[issue(key: "OC-1", statusName: "待办")]])
+        _ = await pull(fetcher, into: ctx, now: Date(timeIntervalSince1970: 1000))
+        let t = try #require(try allTasks(ctx).first)
+        t.columnID = cols[2].id                       // 用户手动拖到「测试中」
+        t.modifiedAt = Date(timeIntervalSince1970: 1500)
+        try ctx.save()
+        await fetcher.schedules([issue(key: "OC-1", statusName: "正在进行")])
+        _ = await pull(fetcher, into: ctx, now: Date(timeIntervalSince1970: 2000))
+        #expect(t.columnID == cols[2].id)   // 本地优先,不挪
+    }
+
+    @Test func pullRecordsDiscoveredStatuses() async throws {
+        UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses)
+        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.jiraDiscoveredStatuses) }
+        let ctx = try makeContext()
+        _ = await pull(FakeFetcher(scripts: [[issue(key: "OC-1", statusName: "正在进行"),
+                                              issue(key: "AAA-2", statusName: "待办")]]), into: ctx)
+        let discovered = Set(AppSettings.jiraDiscoveredStatuses.map { "\($0.project)|\($0.status)" })
+        #expect(discovered == ["OC|正在进行", "AAA|待办"])
     }
 }

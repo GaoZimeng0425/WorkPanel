@@ -59,12 +59,12 @@ struct JiraPullService {
                 if local.modifiedAt > (local.jiraSyncedAt ?? local.modifiedAt) {
                     report.skipped += 1; continue                               // 本地改过,本地优先
                 }
-                apply(issue, to: local, now: now)
+                apply(issue, to: local, now: now, context: context)
                 report.updated += 1
             } else {
                 guard !dismissed.contains(issue.key) else { continue }          // 删除过的不再插入
                 let t = TodoTask(title: "")
-                apply(issue, to: t, now: now)
+                apply(issue, to: t, now: now, context: context)
                 t.jiraKey = issue.key
                 if issue.statusCategoryKey == "Done" { markCompleted(t, now: now) }
                 context.insert(t)
@@ -93,6 +93,11 @@ struct JiraPullService {
             }
         }
 
+        // 记录本次发现过的 (项目, 状态),整体替换,供设置面板渲染映射行
+        AppSettings.jiraDiscoveredStatuses = Set(remote.map {
+            JiraDiscoveredStatus(project: $0.projectKey, status: $0.statusName)
+        }).sorted { ($0.project, $0.status) < ($1.project, $1.status) }
+
         TagStore(context: context).reconcileFromTasks()
         do { try context.save() }
         catch { report.failedMessage = "拉取完成,但写入存储失败:\(error.localizedDescription)" }
@@ -101,15 +106,25 @@ struct JiraPullService {
 
     // MARK: - 字段映射
 
-    /// 远端字段应用到任务(插入与更新共用)。不触碰 isCompleted/completedAt/columnID/recurrence 等。
-    private func apply(_ issue: JiraIssue, to t: TodoTask, now: Date) {
+    /// 远端字段应用到任务(插入与更新共用)。不触碰 isCompleted/completedAt/recurrence 等。
+    /// columnID 由「项目×状态→列名」映射解析;未映射或列名不存在 → nil(显示回退第一列)。
+    private func apply(_ issue: JiraIssue, to t: TodoTask, now: Date, context: ModelContext) {
         t.title = "[\(issue.key)] \(issue.summary)"
         t.notes = issue.descriptionText ?? ""
         t.deadline = Self.deadline(fromDay: issue.duedateDay)
         t.priority = Self.priority(from: issue.priorityName)
         t.tags = ["jira"]
+        t.columnID = Self.mappedColumnID(for: issue, in: context)
         t.modifiedAt = now
         t.jiraSyncedAt = now
+    }
+
+    /// 项目×状态 → 列名 → 本地列 id;任一环节缺失返回 nil。
+    private static func mappedColumnID(for issue: JiraIssue, in context: ModelContext) -> UUID? {
+        guard let columnName = AppSettings.jiraColumnMapping[issue.projectKey]?[issue.statusName]
+        else { return nil }
+        let columns = (try? context.fetch(FetchDescriptor<BoardColumn>())) ?? []
+        return columns.first { $0.name == columnName }?.id
     }
 
     private func markCompleted(_ t: TodoTask, now: Date) {

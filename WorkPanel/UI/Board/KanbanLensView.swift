@@ -39,13 +39,19 @@ struct KanbanLensView: View {
     }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(columns) { columnView($0) }
-                archiveColumnView
-                addColumnButton
+        GeometryReader { geo in
+            // 等宽列:可用宽度均分给 c+1 个弹性列(含归档);列多到放不下时退回最小宽横向滚动。
+            let flexCount = CGFloat(columns.count + 1)
+            let chrome = 24.0 + 12.0 * flexCount + 150.0   // 外 padding + 列间距 + 「加列」按钮
+            let width = max(columnWidth, (geo.size.width - chrome) / flexCount)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(columns) { columnView($0, width: width) }
+                    archiveColumnView(width: width)
+                    addColumnButton
+                }
+                .padding(12)
             }
-            .padding(12)
         }
         .alert("重命名列", isPresented: Binding(get: { renaming != nil },
                                               set: { if !$0 { renaming = nil } })) {
@@ -69,7 +75,7 @@ struct KanbanLensView: View {
         }
     }
 
-    private func columnView(_ column: BoardColumn) -> some View {
+    private func columnView(_ column: BoardColumn, width: CGFloat) -> some View {
         let items = activeTasks(in: column)
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -128,7 +134,7 @@ struct KanbanLensView: View {
             Spacer(minLength: 0)
         }
         .padding(10)
-        .frame(minWidth: columnWidth, maxWidth: .infinity)
+        .frame(width: width)
         .frame(maxHeight: .infinity, alignment: .top)
         .noirColumn()
         .reorderContainer(space: column.id, order: items.map(\.id)) { payload, index in
@@ -136,7 +142,7 @@ struct KanbanLensView: View {
         }
     }
 
-    private var archiveColumnView: some View {
+    private func archiveColumnView(width: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("归档")
@@ -170,7 +176,7 @@ struct KanbanLensView: View {
             Spacer(minLength: 0)
         }
         .padding(10)
-        .frame(minWidth: columnWidth, maxWidth: .infinity)
+        .frame(width: width)
         .frame(maxHeight: .infinity, alignment: .top)
         .noirColumn()
         .deferredDrop { handleArchiveDrop($0) }
