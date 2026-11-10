@@ -8,7 +8,7 @@ struct TodoStoreTests {
     private var calendar = Calendar(identifier: .gregorian)
     private func makeStore() throws -> TodoStore {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: TodoTask.self, Tombstone.self, configurations: config)
+        let container = try ModelContainer(for: TodoTask.self, configurations: config)
         return TodoStore(context: ModelContext(container))
     }
 
@@ -109,6 +109,5 @@ struct TodoStoreTests {
         store.delete(task, now: Date(timeIntervalSince1970: 100))
         try store.context.save()
         #expect(try store.context.fetch(FetchDescriptor<TodoTask>()).isEmpty)
-        #expect(try store.context.fetch(FetchDescriptor<Tombstone>()).isEmpty)
     }
 }

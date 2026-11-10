@@ -73,31 +73,42 @@ struct SyncDocumentTests {
         #expect(back.modifiedAt == Date(timeIntervalSince1970: 222))
     }
 
-    @Test func tombstoneDTORoundTrips() throws {
-        let t = Tombstone(id: UUID(), kind: .column, deletedAt: Date(timeIntervalSince1970: 123))
-        let dto = SyncTombstoneDTO(t)
-        let data = try SyncDocument.encoder.encode(dto)
-        let back = try SyncDocument.decoder.decode(SyncTombstoneDTO.self, from: data)
-        #expect(back.id == t.id)
-        #expect(back.kind == "column")
-        #expect(back.deletedAt == Date(timeIntervalSince1970: 123))
-        #expect(back.makeModel().kind == .column)
-    }
-
-    @Test func documentMissingTombstonesDecodesAsNil() throws {
-        // tombstones 为 nil → 编码省略该键(模拟旧版本文档)→ 解码回 nil
-        let doc = SyncDocument(schemaVersion: 1, exportedAt: Date(timeIntervalSince1970: 0),
-                               tasks: [], columns: [], dayPlans: [], settings: SyncSettingsDTO())
-        let data = try SyncDocument.encoder.encode(doc)
-        #expect(!(String(data: data, encoding: .utf8) ?? "").contains("tombstones"))
-        let back = try SyncDocument.decoder.decode(SyncDocument.self, from: data)
-        #expect(back.tombstones == nil)
-    }
-
-    @Test func tombstoneDTOUnknownKindFallsBackToTask() throws {
-        var dto = SyncTombstoneDTO(Tombstone(id: UUID(), kind: .task, deletedAt: Date(timeIntervalSince1970: 1)))
-        dto.kind = "unknown_future_kind"
-        #expect(dto.makeModel().kind == .task)
+    @Test func documentWithLegacyTombstonesKeyDecodesAndIgnores() throws {
+        // 旧版导出文件含 "tombstones" 键 → JSONDecoder 忽略未知键,正常解码
+        let json = """
+        {
+          "schemaVersion" : 1,
+          "exportedAt" : "2026-01-01T00:00:00Z",
+          "tasks" : [
+            {
+              "id" : "11111111-1111-1111-1111-111111111111",
+              "title" : "旧任务",
+              "notes" : "",
+              "priorityRaw" : 1,
+              "tags" : [],
+              "isCompleted" : false,
+              "createdAt" : "2026-01-01T00:00:00Z",
+              "boardOrder" : 0,
+              "planOrder" : 0,
+              "modifiedAt" : "2026-01-01T00:00:00Z"
+            }
+          ],
+          "columns" : [],
+          "dayPlans" : [],
+          "settings" : {},
+          "tombstones" : [
+            {
+              "id" : "22222222-2222-2222-2222-222222222222",
+              "kind" : "task",
+              "deletedAt" : "2026-01-02T00:00:00Z"
+            }
+          ]
+        }
+        """
+        let doc = try SyncDocument.decoder.decode(SyncDocument.self, from: Data(json.utf8))
+        #expect(doc.schemaVersion == 1)
+        #expect(doc.tasks.count == 1)
+        #expect(doc.tasks.first?.title == "旧任务")
     }
 
     @Test func taskDTORoundTripsStartDate() throws {

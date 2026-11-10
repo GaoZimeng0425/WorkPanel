@@ -56,17 +56,14 @@ struct SyncServiceExportTests {
         #expect(doc.tasks.count == 1)
     }
 
-    @Test func exportIncludesTombstones() throws {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
-            for: TodoTask.self, BoardColumn.self, DayPlan.self, Tombstone.self, configurations: config)
-        let ctx = ModelContext(container)
-        ctx.insert(Tombstone(id: UUID(), kind: .task, deletedAt: Date(timeIntervalSince1970: 5)))
+    @Test func exportOmitsTombstonesKey() throws {
+        let ctx = try makeContext()
+        ctx.insert(TodoTask(title: "A"))
         try ctx.save()
 
         let data = try SyncService.exportData(context: ctx, includeSettings: false)
         let doc = try SyncService.parse(data)
-        #expect(doc.tombstones?.count == 1)
-        #expect(doc.tombstones?.first?.kind == "task")
+        #expect(doc.tasks.count == 1)
+        #expect(!(String(data: data, encoding: .utf8) ?? "").contains("tombstones"))
     }
 }

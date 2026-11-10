@@ -61,18 +61,6 @@ struct SyncDayPlanDTO: Codable {
     func apply(to p: DayPlan) { p.committedTaskIDs = committedTaskIDs; p.modifiedAt = modifiedAt }
 }
 
-struct SyncTombstoneDTO: Codable {
-    var id: UUID
-    var kind: String        // TombstoneKind.rawValue
-    var deletedAt: Date
-
-    init(_ t: Tombstone) { id = t.id; kind = t.kindRaw; deletedAt = t.deletedAt }
-
-    func makeModel() -> Tombstone {
-        Tombstone(id: id, kind: TombstoneKind(rawValue: kind) ?? .task, deletedAt: deletedAt)
-    }
-}
-
 struct SyncDocument: Codable {
     static let currentSchemaVersion = 1
 
@@ -82,7 +70,6 @@ struct SyncDocument: Codable {
     var columns: [SyncColumnDTO]
     var dayPlans: [SyncDayPlanDTO]
     var settings: SyncSettingsDTO
-    var tombstones: [SyncTombstoneDTO]? = nil
 
     nonisolated(unsafe) static let encoder: JSONEncoder = {
         let e = JSONEncoder()

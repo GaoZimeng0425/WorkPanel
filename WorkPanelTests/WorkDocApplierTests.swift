@@ -8,7 +8,7 @@ struct WorkDocApplierTests {
     private func makeContext() throws -> ModelContext {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
-            for: TodoTask.self, BoardColumn.self, Tag.self, Tombstone.self, DayPlan.self,
+            for: TodoTask.self, BoardColumn.self, Tag.self, DayPlan.self,
             configurations: config)
         return ModelContext(container)
     }
@@ -74,6 +74,5 @@ struct WorkDocApplierTests {
         WorkDocApplier(context: ctx).apply(cs)
 
         #expect((try ctx.fetch(FetchDescriptor<TodoTask>())).isEmpty)
-        #expect(try ctx.fetch(FetchDescriptor<Tombstone>()).isEmpty)
     }
 }

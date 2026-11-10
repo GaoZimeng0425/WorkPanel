@@ -7,7 +7,7 @@ import SwiftData
 struct BoardStoreTests {
     private func makeStore() throws -> BoardStore {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: TodoTask.self, BoardColumn.self, Tombstone.self, configurations: config)
+        let container = try ModelContainer(for: TodoTask.self, BoardColumn.self, configurations: config)
         return BoardStore(context: ModelContext(container))
     }
 
@@ -191,7 +191,6 @@ struct BoardStoreTests {
         try store.context.save()
         #expect(!store.columns().contains { $0.id == cols[1].id })
         #expect(task.columnID == cols[0].id)
-        #expect(try store.context.fetch(FetchDescriptor<Tombstone>()).isEmpty)
     }
 
     @Test func deleteLastColumnIsNoop() throws {
