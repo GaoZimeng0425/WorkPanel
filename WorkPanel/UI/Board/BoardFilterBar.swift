@@ -14,10 +14,11 @@ struct BoardFilterBar: View {
     var body: some View {
         HStack(spacing: 10) {
             searchField
-            jiraPullButton
             priorityPills
             urgentPill
             tagButton
+            jiraPullButton
+                .padding(.leading, 20)
             Spacer(minLength: 0)
             if filter.isActive {
                 Button("清除") { filter.clear() }
@@ -55,12 +56,17 @@ struct BoardFilterBar: View {
                 await MainActor.run { isPullingJira = false }
             }
         } label: {
-            Image(systemName: isPullingJira ? "arrow.triangle.2.circlepath" : "arrow.down.circle")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Theme.accentText)
+            HStack(spacing: 4) {
+                Image(systemName: isPullingJira ? "arrow.triangle.2.circlepath" : "arrow.down.circle")
+                    .font(.system(size: 10, weight: .semibold))
+                Text(isPullingJira ? "拉取中" : "拉取 Jira")
+            }
+            .foregroundStyle(Theme.accentText)
+            .noirPickerPill()
         }
         .buttonStyle(.plain)
-        .help(isPullingJira ? "正在拉取 Jira…" : "拉取 Jira")
+        .disabled(isPullingJira)
+        .help(isPullingJira ? "正在拉取 Jira…" : "立即拉取 Jira")
     }
 
     private var priorityPills: some View {
