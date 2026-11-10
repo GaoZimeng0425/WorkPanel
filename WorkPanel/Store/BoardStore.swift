@@ -61,9 +61,7 @@ final class BoardStore {
         for task in tasks where task.columnID == column.id {
             task.columnID = target.id
         }
-        let id = column.id
         context.delete(column)
-        context.insert(Tombstone(id: id, kind: .column, deletedAt: now))
     }
 
     /// 把 task 放到目标列「第 index 个卡片之前」(insert-before),并把该列未完成任务的

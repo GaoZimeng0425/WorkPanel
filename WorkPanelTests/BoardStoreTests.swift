@@ -179,27 +179,31 @@ struct BoardStoreTests {
         #expect(t.priority == .high)
     }
 
-    @Test func deleteCreatesColumnTombstone() throws {
+    @Test func deleteRemovesColumnMovesTasks() throws {
         let store = try makeStore()
-        let a = store.addColumn(name: "A")
-        _ = store.addColumn(name: "B")
+        store.seedDefaultColumnsIfNeeded()
+        let cols = store.columns()
+        let task = TodoTask(title: "在第二列")
+        task.columnID = cols[1].id
+        store.context.insert(task)
+
+        store.delete(cols[1], now: Date(timeIntervalSince1970: 100))
         try store.context.save()
-        store.delete(a, now: Date(timeIntervalSince1970: 100))
-        try store.context.save()
-        let tombs = try store.context.fetch(FetchDescriptor<Tombstone>())
-        #expect(tombs.count == 1)
-        #expect(tombs.first?.id == a.id)
-        #expect(tombs.first?.kind == .column)
-        #expect(tombs.first?.deletedAt == Date(timeIntervalSince1970: 100))
+        #expect(!store.columns().contains { $0.id == cols[1].id })
+        #expect(task.columnID == cols[0].id)
+        #expect(try store.context.fetch(FetchDescriptor<Tombstone>()).isEmpty)
     }
 
-    @Test func deleteLastColumnCreatesNoTombstone() throws {
+    @Test func deleteLastColumnIsNoop() throws {
         let store = try makeStore()
         let only = store.addColumn(name: "唯一")
+        let task = TodoTask(title: "不动")
+        task.columnID = only.id
+        store.context.insert(task)
         try store.context.save()
         store.delete(only)
         try store.context.save()
         #expect(try store.context.fetch(FetchDescriptor<BoardColumn>()).count == 1)
-        #expect(try store.context.fetch(FetchDescriptor<Tombstone>()).isEmpty)
+        #expect(task.columnID == only.id)
     }
 }

@@ -65,7 +65,7 @@ struct WorkDocApplierTests {
         #expect(task.completedAt != nil)
     }
 
-    @Test func deleteRemovesTaskAndLeavesTombstone() throws {
+    @Test func deleteRemovesTask() throws {
         let ctx = try makeContext()
         let task = TodoTask(title: "删我")
         ctx.insert(task)
@@ -74,7 +74,6 @@ struct WorkDocApplierTests {
         WorkDocApplier(context: ctx).apply(cs)
 
         #expect((try ctx.fetch(FetchDescriptor<TodoTask>())).isEmpty)
-        let tombstones = try ctx.fetch(FetchDescriptor<Tombstone>())
-        #expect(tombstones.contains { $0.id == id })
+        #expect(try ctx.fetch(FetchDescriptor<Tombstone>()).isEmpty)
     }
 }

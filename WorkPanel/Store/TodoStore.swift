@@ -57,9 +57,7 @@ final class TodoStore {
     }
 
     func delete(_ task: TodoTask, now: Date = .now) {
-        let id = task.id
         context.delete(task)
-        context.insert(Tombstone(id: id, kind: .task, deletedAt: now))
     }
 
     static func nextDeadline(after date: Date, rule: RecurrenceRule, calendar: Calendar) -> Date? {
