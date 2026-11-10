@@ -18,6 +18,12 @@ struct SettingsView: View {
     @AppStorage(AppSettings.Key.aiBaseURL) private var aiBaseURL = ""
     @AppStorage(AppSettings.Key.aiModel) private var aiModel = ""
     @AppStorage(AppSettings.Key.aiAPIKey) private var aiAPIKey = ""
+    @AppStorage(AppSettings.Key.jiraDomain) private var jiraDomain = ""
+    @AppStorage(AppSettings.Key.jiraEmail) private var jiraEmail = ""
+    @AppStorage(AppSettings.Key.jiraAPIToken) private var jiraAPIToken = ""
+    @AppStorage(AppSettings.Key.jiraJQL) private var jiraJQL = ""
+    @State private var isPulling = false
+    @State private var dismissedKeys: [String] = AppSettings.jiraDismissedKeys
 
     @State private var selectedTab: SettingsTab = .shortcuts
 
@@ -34,7 +40,7 @@ struct SettingsView: View {
 
     /// 左侧 tab。rawValue 仅作 Identifiable 用,不持久化。
     private enum SettingsTab: String, CaseIterable, Identifiable {
-        case shortcuts, general, reminder, mcp, ai
+        case shortcuts, general, reminder, mcp, ai, jira
         var id: String { rawValue }
         var label: String {
             switch self {
@@ -43,6 +49,7 @@ struct SettingsView: View {
             case .reminder:  "提醒"
             case .mcp:       "AI 接入"
             case .ai:        "AI 助手"
+            case .jira:      "Jira 同步"
             }
         }
         var icon: String {
@@ -52,6 +59,7 @@ struct SettingsView: View {
             case .reminder:  "bell"
             case .mcp:       "network"
             case .ai:        "sparkles"
+            case .jira:      "arrow.down.circle"
             }
         }
     }
@@ -287,6 +295,7 @@ struct SettingsView: View {
         case .reminder:  reminderSection
         case .mcp:       mcpSection
         case .ai:        aiSection
+        case .jira:      jiraSection
         }
     }
 
@@ -453,6 +462,71 @@ struct SettingsView: View {
                     AIPromptListView()
                 }
             }
+    }
+
+    // MARK: - Jira 拉取
+
+    private var jiraSection: some View {
+        section("Jira 拉取(单向,不回写)", systemImage: "arrow.down.circle") {
+            row("域名", systemImage: "globe") {
+                TextField("antalpha.atlassian.net", text: $jiraDomain)
+                    .labelsHidden().frame(width: 200).multilineTextAlignment(.trailing)
+            }
+            divider
+            row("邮箱", systemImage: "envelope") {
+                TextField("you@example.com", text: $jiraEmail)
+                    .labelsHidden().frame(width: 200).multilineTextAlignment(.trailing)
+            }
+            divider
+            row("API Token", systemImage: "key") {
+                SecureField("atlassian.com 账户安全页创建", text: $jiraAPIToken)
+                    .labelsHidden().frame(width: 200).multilineTextAlignment(.trailing)
+            }
+            divider
+            DisclosureGroup("高级:自定义 JQL") {
+                TextField(AppSettings.defaultJQL, text: $jiraJQL, axis: .vertical)
+                    .font(.callout)
+                    .textFieldStyle(.plain)
+            }
+            .font(.callout)
+            .foregroundStyle(Theme.textSecondary)
+            divider
+            row("拉取", systemImage: "arrow.down.circle") {
+                Button(isPulling ? "拉取中…" : "立即拉取") { runJiraPull() }
+                    .buttonStyle(NoirPillButtonStyle(prominent: true))
+                    .disabled(!AppSettings.jiraConfigured || isPulling)
+            }
+            if !dismissedKeys.isEmpty {
+                divider
+                row("已忽略", systemImage: "eye.slash") {
+                    Button("已忽略 \(dismissedKeys.count) 项 · 恢复") {
+                        AppSettings.jiraResetDismissed()
+                        dismissedKeys = []
+                    }
+                    .buttonStyle(NoirPillButtonStyle())
+                }
+            }
+        }
+    }
+
+    private func runJiraPull() {
+        guard !isPulling else { return }
+        isPulling = true
+        Task {
+            let report = await JiraPullService(
+                fetcher: JiraClient(domain: AppSettings.jiraDomain,
+                                    email: AppSettings.jiraEmail,
+                                    apiToken: AppSettings.jiraAPIToken)
+            ).pull(context: SharedModel.container.mainContext,
+                   dismissedKeys: AppSettings.jiraDismissedKeys)
+            isPulling = false
+            dismissedKeys = AppSettings.jiraDismissedKeys
+            if let msg = report.failedMessage {
+                Notice.show(msg)
+            } else {
+                Notice.show("Jira 拉取:新增 \(report.inserted) · 更新 \(report.updated) · 完成 \(report.completed) · 跳过 \(report.skipped)")
+            }
+        }
     }
 
     // MARK: - 分组卡片与行
