@@ -96,8 +96,8 @@ final class BoardPanelController: NSObject {
         let panel = panel ?? makePanel()
         self.panel = panel
         let visible = screen.visibleFrame
-        let width = visible.width - margin * 2
-        let final = NSRect(x: visible.minX + margin, y: visible.minY + margin,
+        let width = visible.width * 0.8
+        let final = NSRect(x: visible.midX - width / 2, y: visible.minY + margin,
                            width: width, height: currentHeight)
         let (container, hosting) = makeContent(content(), size: final.size)
         panel.setFrame(final, display: false)

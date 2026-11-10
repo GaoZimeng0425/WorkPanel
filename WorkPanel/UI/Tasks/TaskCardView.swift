@@ -29,6 +29,9 @@ struct TaskCardView<Trailing: View>: View {
                     .lineLimit(2)
 
                 HStack(spacing: 6) {
+                    Text(Theme.priorityLabel(task.priority))
+                        .noirBadge(Theme.priority(task.priority))
+                        .lineLimit(1)
                     if let d = task.deadline {
                         Text(Calendar.current.isDateInToday(d)
                              ? d.formatted(date: .omitted, time: .shortened)

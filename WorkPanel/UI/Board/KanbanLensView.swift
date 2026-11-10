@@ -128,7 +128,7 @@ struct KanbanLensView: View {
             Spacer(minLength: 0)
         }
         .padding(10)
-        .frame(width: columnWidth)
+        .frame(minWidth: columnWidth, maxWidth: .infinity)
         .frame(maxHeight: .infinity, alignment: .top)
         .noirColumn()
         .reorderContainer(space: column.id, order: items.map(\.id)) { payload, index in
@@ -170,7 +170,7 @@ struct KanbanLensView: View {
             Spacer(minLength: 0)
         }
         .padding(10)
-        .frame(width: columnWidth)
+        .frame(minWidth: columnWidth, maxWidth: .infinity)
         .frame(maxHeight: .infinity, alignment: .top)
         .noirColumn()
         .deferredDrop { handleArchiveDrop($0) }
