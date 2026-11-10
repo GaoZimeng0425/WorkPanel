@@ -56,7 +56,9 @@ final class TodoStore {
         task.snoozedUntil = date
     }
 
+    /// 删除任务;Jira 关联任务把 issue key 记入 denylist,拉取不再重新插入。
     func delete(_ task: TodoTask) {
+        if let key = task.jiraKey { AppSettings.jiraDismiss(key) }
         context.delete(task)
     }
 
