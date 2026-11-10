@@ -18,6 +18,11 @@ enum AppSettings {
         static let aiModel = "aiModel"
         static let aiAPIKey = "aiAPIKey"   // 明文,与 mcpToken 一致
         static let aiPrompts = "aiPrompts" // JSON 编码的 [AIPrompt]
+        static let jiraDomain = "jiraDomain"
+        static let jiraEmail = "jiraEmail"
+        static let jiraAPIToken = "jiraAPIToken"   // 明文,与 aiAPIKey 一致
+        static let jiraJQL = "jiraJQL"
+        static let jiraDismissedKeys = "jiraDismissedKeys"   // [String],本机 dismiss 状态,不导出
     }
 
     /// 在 App 启动时调用一次,确保未设置过的项使用正确默认值(尤其 notificationSound 默认 true)。
@@ -30,6 +35,8 @@ enum AppSettings {
             Key.boardViewMode: BoardViewMode.kanban.rawValue,
             Key.mcpEnabled: false,
             Key.mcpPort: 8787,
+            Key.jiraDomain: "antalpha.atlassian.net",
+            Key.jiraJQL: defaultJQL,
         ])
     }
 
@@ -74,6 +81,38 @@ enum AppSettings {
     /// 三项配置齐全才算可用——AI 入口的显示门槛,与 AIRequest.build 的校验一致。
     static var aiConfigured: Bool {
         !aiBaseURL.isEmpty && !aiModel.isEmpty && !aiAPIKey.isEmpty
+    }
+    /// 默认 JQL:当前用户的未完成事项,按更新时间倒序。
+    static let defaultJQL = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
+    static var jiraDomain: String {
+        let s = UserDefaults.standard.string(forKey: Key.jiraDomain) ?? ""
+        return s.isEmpty ? "antalpha.atlassian.net" : s
+    }
+    static var jiraEmail: String {
+        UserDefaults.standard.string(forKey: Key.jiraEmail) ?? ""
+    }
+    static var jiraAPIToken: String {
+        UserDefaults.standard.string(forKey: Key.jiraAPIToken) ?? ""
+    }
+    static var jiraJQL: String {
+        let s = UserDefaults.standard.string(forKey: Key.jiraJQL) ?? ""
+        return s.isEmpty ? defaultJQL : s
+    }
+    /// 三项配置齐全才算可用——Jira 入口的显示门槛。
+    static var jiraConfigured: Bool {
+        !jiraDomain.isEmpty && !jiraEmail.isEmpty && !jiraAPIToken.isEmpty
+    }
+    /// 本机已 dismiss 的 Jira 任务键(denylist,不随导出走)。
+    static var jiraDismissedKeys: [String] {
+        UserDefaults.standard.stringArray(forKey: Key.jiraDismissedKeys) ?? []
+    }
+    static func jiraDismiss(_ key: String) {
+        var keys = jiraDismissedKeys
+        if !keys.contains(key) { keys.append(key) }
+        UserDefaults.standard.set(keys, forKey: Key.jiraDismissedKeys)
+    }
+    static func jiraResetDismissed() {
+        UserDefaults.standard.removeObject(forKey: Key.jiraDismissedKeys)
     }
 }
 

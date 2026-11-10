@@ -129,6 +129,42 @@ struct SyncDocumentTests {
         #expect(back.startDate == nil)
     }
 
+    @Test func syncSettingsRoundTripsJiraKeys() throws {
+        // 独立套件 + removePersistentDomain 清理,避免污染真实偏好
+        let suiteA = "SyncDocTests-Jira-A", suiteB = "SyncDocTests-Jira-B"
+        defer {
+            UserDefaults().removePersistentDomain(forName: suiteA)
+            UserDefaults().removePersistentDomain(forName: suiteB)
+        }
+        let a = UserDefaults(suiteName: suiteA)!
+        a.set("example.atlassian.net", forKey: AppSettings.Key.jiraDomain)
+        a.set("dev@example.com", forKey: AppSettings.Key.jiraEmail)
+        a.set("tok-123", forKey: AppSettings.Key.jiraAPIToken)
+        a.set("project = WP", forKey: AppSettings.Key.jiraJQL)
+
+        let dto = SyncSettings.snapshot(suiteName: suiteA)
+        #expect(dto.jiraDomain == "example.atlassian.net")
+        #expect(dto.jiraEmail == "dev@example.com")
+        #expect(dto.jiraAPIToken == "tok-123")
+        #expect(dto.jiraJQL == "project = WP")
+
+        let data = try SyncDocument.encoder.encode(dto)
+        // denylist 为本机状态,不进导出白名单
+        #expect(!(String(data: data, encoding: .utf8) ?? "").contains("jiraDismissedKeys"))
+        let back = try SyncDocument.decoder.decode(SyncSettingsDTO.self, from: data)
+        #expect(back.jiraDomain == "example.atlassian.net")
+        #expect(back.jiraEmail == "dev@example.com")
+        #expect(back.jiraAPIToken == "tok-123")
+        #expect(back.jiraJQL == "project = WP")
+
+        let b = UserDefaults(suiteName: suiteB)!
+        SyncSettings.apply(back, to: b)
+        #expect(b.string(forKey: AppSettings.Key.jiraDomain) == "example.atlassian.net")
+        #expect(b.string(forKey: AppSettings.Key.jiraEmail) == "dev@example.com")
+        #expect(b.string(forKey: AppSettings.Key.jiraAPIToken) == "tok-123")
+        #expect(b.string(forKey: AppSettings.Key.jiraJQL) == "project = WP")
+    }
+
     @Test func taskDTORoundTripsJiraFields() throws {
         let t = TodoTask(title: "x")
         t.jiraKey = "PROJ-1"

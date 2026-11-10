@@ -1,7 +1,7 @@
 import Foundation
 
 /// 同步文件里的设置部分。白名单内的键全部 Optional —— 缺键即 nil,apply 时跳过。
-/// 刻意不含 lastPlannedDay(本机当日规划状态,不应跨机器覆盖)。
+/// 刻意不含 lastPlannedDay(本机当日规划状态,不应跨机器覆盖)与 jiraDismissedKeys(本机 dismiss 状态)。
 struct SyncSettingsDTO: Codable {
     var reminderLeadMinutes: Int?
     var appearance: String?
@@ -16,6 +16,10 @@ struct SyncSettingsDTO: Codable {
     var aiModel: String?
     var aiAPIKey: String?
     var aiPrompts: String?        // UserDefaults 里本就是 JSON 字符串,原样搬运
+    var jiraDomain: String?
+    var jiraEmail: String?
+    var jiraAPIToken: String?
+    var jiraJQL: String?
 }
 
 enum SyncSettings {
@@ -43,6 +47,10 @@ enum SyncSettings {
         dto.aiModel             = obj(K.aiModel) as? String
         dto.aiAPIKey            = obj(K.aiAPIKey) as? String
         dto.aiPrompts           = obj(K.aiPrompts) as? String
+        dto.jiraDomain          = obj(K.jiraDomain) as? String
+        dto.jiraEmail           = obj(K.jiraEmail) as? String
+        dto.jiraAPIToken        = obj(K.jiraAPIToken) as? String
+        dto.jiraJQL             = obj(K.jiraJQL) as? String
         return dto
     }
 
@@ -67,5 +75,9 @@ enum SyncSettings {
         if let v = dto.aiModel             { defaults.set(v, forKey: K.aiModel) }
         if let v = dto.aiAPIKey            { defaults.set(v, forKey: K.aiAPIKey) }
         if let v = dto.aiPrompts           { defaults.set(v, forKey: K.aiPrompts) }
+        if let v = dto.jiraDomain          { defaults.set(v, forKey: K.jiraDomain) }
+        if let v = dto.jiraEmail           { defaults.set(v, forKey: K.jiraEmail) }
+        if let v = dto.jiraAPIToken        { defaults.set(v, forKey: K.jiraAPIToken) }
+        if let v = dto.jiraJQL             { defaults.set(v, forKey: K.jiraJQL) }
     }
 }
