@@ -128,4 +128,17 @@ struct SyncDocumentTests {
         let back = try SyncDocument.decoder.decode(SyncTaskDTO.self, from: data)
         #expect(back.startDate == nil)
     }
+
+    @Test func taskDTORoundTripsJiraFields() throws {
+        let t = TodoTask(title: "x")
+        t.jiraKey = "PROJ-1"
+        t.jiraSyncedAt = Date(timeIntervalSince1970: 100)
+        let dto = SyncTaskDTO(t)
+        let data = try SyncDocument.encoder.encode(dto)
+        let back = try SyncDocument.decoder.decode(SyncTaskDTO.self, from: data)
+        let restored = TodoTask(title: "新模型")
+        back.apply(to: restored)
+        #expect(restored.jiraKey == "PROJ-1")
+        #expect(restored.jiraSyncedAt == Date(timeIntervalSince1970: 100))
+    }
 }

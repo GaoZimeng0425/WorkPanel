@@ -18,6 +18,8 @@ struct SyncTaskDTO: Codable {
     var planOrder: Int
     var urgencyOverride: Bool?
     var modifiedAt: Date
+    var jiraKey: String?
+    var jiraSyncedAt: Date?
 
     init(_ t: TodoTask) {
         id = t.id; title = t.title; notes = t.notes; deadline = t.deadline; startDate = t.startDate
@@ -25,6 +27,7 @@ struct SyncTaskDTO: Codable {
         completedAt = t.completedAt; createdAt = t.createdAt; snoozedUntil = t.snoozedUntil
         recurrenceRaw = t.recurrenceRaw; columnID = t.columnID; boardOrder = t.boardOrder
         planOrder = t.planOrder; urgencyOverride = t.urgencyOverride; modifiedAt = t.modifiedAt
+        jiraKey = t.jiraKey; jiraSyncedAt = t.jiraSyncedAt
     }
 
     func makeModel() -> TodoTask { let t = TodoTask(title: title); apply(to: t); return t }
@@ -35,6 +38,7 @@ struct SyncTaskDTO: Codable {
         t.completedAt = completedAt; t.createdAt = createdAt; t.snoozedUntil = snoozedUntil
         t.recurrenceRaw = recurrenceRaw; t.columnID = columnID; t.boardOrder = boardOrder
         t.planOrder = planOrder; t.urgencyOverride = urgencyOverride; t.modifiedAt = modifiedAt
+        t.jiraKey = jiraKey; t.jiraSyncedAt = jiraSyncedAt
     }
 }
 
