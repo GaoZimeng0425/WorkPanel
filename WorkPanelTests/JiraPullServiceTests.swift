@@ -24,11 +24,13 @@ struct JiraPullServiceTests {
                        statusName: String = "待办",
                        priorityName: String? = "Medium",
                        duedateDay: String? = nil,
-                       descriptionText: String? = nil) -> JiraIssue {
+                       descriptionText: String? = nil,
+                       epicName: String? = nil) -> JiraIssue {
         JiraIssue(key: key, summary: summary, statusName: statusName,
                   statusCategoryKey: statusCategoryKey,
                   projectKey: String(key.split(separator: "-").first ?? ""),
-                  priorityName: priorityName, duedateDay: duedateDay, descriptionText: descriptionText)
+                  priorityName: priorityName, duedateDay: duedateDay, descriptionText: descriptionText,
+                  epicName: epicName)
     }
 
     private func seedColumns(_ names: [String], in ctx: ModelContext) throws -> [BoardColumn] {
@@ -298,6 +300,21 @@ struct JiraPullServiceTests {
         let r = await pull(fetcher, into: ctx)
         #expect(r.completed == 0)
         #expect(try allTasks(ctx).isEmpty)
+    }
+
+    // MARK: - Epic 标签
+
+    @Test func epicNameBecomesTag() async throws {
+        let ctx = try makeContext()
+        _ = await pull(FakeFetcher(scripts: [[issue(key: "AAA-1", epicName: "1.5")]]), into: ctx)
+        let t = try #require(try allTasks(ctx).first)
+        #expect(t.tags == ["jira", "1.5"])
+    }
+
+    @Test func taskWithoutEpicKeepsOnlyJiraTag() async throws {
+        let ctx = try makeContext()
+        _ = await pull(FakeFetcher(scripts: [[issue(key: "AAA-1")]]), into: ctx)
+        #expect(try allTasks(ctx).first?.tags == ["jira"])
     }
 
     // MARK: - 状态→列映射(按项目)

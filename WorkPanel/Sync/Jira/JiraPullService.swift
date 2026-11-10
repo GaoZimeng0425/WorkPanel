@@ -113,7 +113,11 @@ struct JiraPullService {
         t.notes = issue.descriptionText ?? ""
         t.deadline = Self.deadline(fromDay: issue.duedateDay)
         t.priority = Self.priority(from: issue.priorityName)
-        t.tags = ["jira"]
+        if let epic = issue.epicName, epic != "jira" {
+            t.tags = ["jira", epic]
+        } else {
+            t.tags = ["jira"]
+        }
         t.columnID = Self.mappedColumnID(for: issue, in: context)
         t.modifiedAt = now
         t.jiraSyncedAt = now

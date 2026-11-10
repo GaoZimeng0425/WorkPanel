@@ -542,6 +542,12 @@ struct SettingsView: View {
                 }
             }
         }
+        .onAppear {
+            // 外部(如 defaults write)可能改过映射/忽略表,面板出现时同步一次
+            columnMapping = AppSettings.jiraColumnMapping
+            discovered = AppSettings.jiraDiscoveredStatuses
+            dismissedKeys = AppSettings.jiraDismissedKeys
+        }
     }
 
     /// (项目,状态) → 列名 的双向绑定;空串 = 不映射(删除该键),写穿到 UserDefaults。
@@ -573,6 +579,7 @@ struct SettingsView: View {
             isPulling = false
             dismissedKeys = AppSettings.jiraDismissedKeys
             discovered = AppSettings.jiraDiscoveredStatuses
+            columnMapping = AppSettings.jiraColumnMapping
             if let msg = report.failedMessage {
                 Notice.show(msg)
             } else {

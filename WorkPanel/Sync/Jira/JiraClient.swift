@@ -10,6 +10,7 @@ nonisolated struct JiraIssue: Equatable, Sendable {
     var priorityName: String?     // priority 缺失时 nil
     var duedateDay: String?       // "2026-11-20" 原样;缺省 nil
     var descriptionText: String?  // ADF 提取的纯文本;无 description 时 nil
+    var epicName: String?         // 父 Epic 的名称(如 "1.5"/"TUI");无 Epic 父时 nil
 }
 
 /// search 结果:issues + 是否因分页上限截断。
@@ -42,7 +43,7 @@ nonisolated enum JiraError: LocalizedError {
 nonisolated struct JiraClient: JiraFetching {
     static let maxPages = 5
     static let pageSize = 50
-    private static let fields = ["summary", "status", "priority", "duedate", "description"]
+    private static let fields = ["summary", "status", "priority", "duedate", "description", "parent"]
 
     /// 单页请求:入参为请求体 JSON,返回响应体。生产走 URLSession,测试注入替身。
     typealias PageSender = @Sendable ([String: Any]) async throws -> Data
@@ -111,7 +112,8 @@ nonisolated struct JiraClient: JiraFetching {
                 projectKey: String(dto.key.split(separator: "-").first ?? ""),
                 priorityName: dto.fields?.priority?.name,
                 duedateDay: dto.fields?.duedate,
-                descriptionText: dto.fields?.description.map(adfPlainText)
+                descriptionText: dto.fields?.description.map(adfPlainText),
+                epicName: dto.fields?.epicParentName
             )
         }
         return (issues, resp.nextPageToken)
@@ -167,6 +169,7 @@ private nonisolated struct FieldsDTO: Codable {
     var priority: PriorityDTO?
     var duedate: String?
     var description: ADFNode?
+    var parent: ParentDTO?
 }
 
 private nonisolated struct StatusDTO: Codable {
@@ -180,4 +183,25 @@ private nonisolated struct StatusCategoryDTO: Codable {
 
 private nonisolated struct PriorityDTO: Codable {
     var name: String?
+}
+
+private nonisolated struct ParentDTO: Codable {
+    var fields: ParentFieldsDTO?
+}
+
+private nonisolated struct ParentFieldsDTO: Codable {
+    var summary: String?
+    var issuetype: NameDTO?
+}
+
+private nonisolated struct NameDTO: Codable {
+    var name: String?
+}
+
+private nonisolated extension FieldsDTO {
+    /// 父级为 Epic 时返回其名称;父级缺失或非 Epic(如子任务的 Story 父)返回 nil。
+    var epicParentName: String? {
+        guard parent?.fields?.issuetype?.name == "Epic" else { return nil }
+        return parent?.fields?.summary
+    }
 }

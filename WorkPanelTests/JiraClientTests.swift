@@ -149,6 +149,32 @@ struct JiraClientTests {
         #expect(JiraClient.normalizedDomain("bad domain") == nil)
     }
 
+    // MARK: - Epic 父链接
+
+    @Test func parseExtractsEpicParentName() throws {
+        var j = issueJSON(key: "AAA-1")
+        var f = j["fields"] as! [String: Any]
+        f["parent"] = [
+            "key": "AAA-100",
+            "fields": ["summary": "1.5 图形化改造", "issuetype": ["name": "Epic"]]
+        ] as [String: Any]
+        j["fields"] = f
+        let (issues, _) = try JiraClient.parseIssues(try responseData(issues: [j]))
+        #expect(issues.first?.epicName == "1.5 图形化改造")
+    }
+
+    @Test func parseIgnoresNonEpicParent() throws {
+        var j = issueJSON(key: "AAA-2")
+        var f = j["fields"] as! [String: Any]
+        f["parent"] = [
+            "key": "AAA-200",
+            "fields": ["summary": "某个普通父任务", "issuetype": ["name": "Story"]]
+        ] as [String: Any]
+        j["fields"] = f
+        let (issues, _) = try JiraClient.parseIssues(try responseData(issues: [j]))
+        #expect(issues.first?.epicName == nil)   // 只有 Epic 类型的父才标记
+    }
+
     // MARK: - 嵌套 ADF
 
     @Test func parseExtractsNestedListItemsWithSeparators() throws {
