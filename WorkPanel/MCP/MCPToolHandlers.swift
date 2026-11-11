@@ -14,7 +14,7 @@ enum ToolError: Error, CustomStringConvertible {
     }
 }
 
-struct CompleteResult: Codable {
+struct UpdateResult: Codable {
     let task: TaskDTO
     let next: TaskDTO?
 }
@@ -44,8 +44,6 @@ final class MCPToolHandlers {
         case "list_jira_tasks": return try listJiraTasks(args)
         case "create_task":  return try await createTask(args)
         case "update_task":  return try await updateTask(args)
-        case "complete_task": return try await completeTask(args)
-        case "reopen_task":   return try reopenTask(args)
         case "snooze_task":   return try snoozeTask(args)
         case "delete_task":   return try deleteTask(args)
         case "move_task":     return try moveTask(args)
@@ -178,27 +176,24 @@ final class MCPToolHandlers {
         }
         tags.register(names: task.tags)
         try context.saveTracking()
+
+        if args["completed"]?.boolValue == true {
+            var next: TodoTask? = nil
+            if !task.isCompleted {
+                next = todo.complete(task)
+                try context.saveTracking()
+                scheduler.cancel(for: task)
+                if let next { await scheduler.schedule(for: next) }
+            }
+            return try encode(UpdateResult(task: dto(task), next: next.map(dto)))
+        }
+        if args["completed"]?.boolValue == false, task.isCompleted {
+            todo.reopen(task)
+            try context.saveTracking()
+        }
         scheduler.cancel(for: task)
         await scheduler.schedule(for: task)
-        return try encode(dto(task))
-    }
-
-    // MARK: - State transitions
-
-    private func completeTask(_ args: JSONValue) async throws -> String {
-        let task = try fetchTask(requireID(args))
-        let next = todo.complete(task)
-        try context.saveTracking()
-        scheduler.cancel(for: task)
-        if let next { await scheduler.schedule(for: next) }
-        return try encode(CompleteResult(task: dto(task), next: next.map(dto)))
-    }
-
-    private func reopenTask(_ args: JSONValue) throws -> String {
-        let task = try fetchTask(requireID(args))
-        todo.reopen(task)
-        try context.saveTracking()
-        return try encode(dto(task))
+        return try encode(UpdateResult(task: dto(task), next: nil))
     }
 
     private func snoozeTask(_ args: JSONValue) throws -> String {

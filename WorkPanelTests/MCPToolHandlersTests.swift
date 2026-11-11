@@ -29,6 +29,9 @@ struct MCPToolHandlersTests {
     private func decodeTask(_ json: String) throws -> TaskDTO {
         try JSONDecoder().decode(TaskDTO.self, from: Data(json.utf8))
     }
+    private func decodeUpdatedTask(_ json: String) throws -> TaskDTO {
+        try JSONDecoder().decode(UpdateResult.self, from: Data(json.utf8)).task
+    }
 
     @Test func listTasksFiltersByCompleted() async throws {
         let (h, ctx, _) = try makeHandlers()
@@ -135,7 +138,7 @@ struct MCPToolHandlersTests {
         let json = try await h.call("update_task", [
             "id": .string(t.id.uuidString), "title": "新标题", "priority": "high",
         ])
-        let dto = try decodeTask(json)
+        let dto = try decodeUpdatedTask(json)
         #expect(dto.title == "新标题")
         #expect(dto.priority == "high")
         #expect(dto.notes == "旧备注")   // untouched (absent key)
@@ -149,7 +152,7 @@ struct MCPToolHandlersTests {
         ctx.insert(t); try ctx.save()
 
         let json = try await h.call("update_task", ["id": .string(t.id.uuidString), "deadline": .null])
-        #expect(try decodeTask(json).deadline == nil)
+        #expect(try decodeUpdatedTask(json).deadline == nil)
         #expect(t.deadline == nil)
     }
 
@@ -167,36 +170,58 @@ struct MCPToolHandlersTests {
         }
     }
 
-    @Test func completeTaskCancelsNotificationAndReturnsTask() async throws {
+    @Test func completingViaUpdateCancelsNotificationAndReturnsTask() async throws {
         let (h, ctx, mock) = try makeHandlers()
         let t = TodoTask(title: "完成我", deadline: Date(timeIntervalSinceNow: 3600))
         ctx.insert(t); try ctx.save()
 
-        let json = try await h.call("complete_task", ["id": .string(t.id.uuidString)])
-        let result = try JSONDecoder().decode(CompleteResult.self, from: Data(json.utf8))
+        let json = try await h.call("update_task", ["id": .string(t.id.uuidString), "completed": true])
+        let result = try JSONDecoder().decode(UpdateResult.self, from: Data(json.utf8))
         #expect(result.task.isCompleted == true)
         #expect(result.next == nil)
         #expect(mock.removed.contains(t.id.uuidString))
     }
 
-    @Test func completeRecurringSchedulesNext() async throws {
+    @Test func completingRecurringViaUpdateSchedulesNext() async throws {
         let (h, ctx, mock) = try makeHandlers()
         let t = TodoTask(title: "每天站会", deadline: Date(timeIntervalSinceNow: 3600), recurrence: .daily)
         ctx.insert(t); try ctx.save()
 
-        let json = try await h.call("complete_task", ["id": .string(t.id.uuidString)])
-        let result = try JSONDecoder().decode(CompleteResult.self, from: Data(json.utf8))
+        let json = try await h.call("update_task", ["id": .string(t.id.uuidString), "completed": true])
+        let result = try JSONDecoder().decode(UpdateResult.self, from: Data(json.utf8))
         #expect(result.next != nil)
         #expect(mock.added.contains { $0.identifier == result.next?.id })
     }
 
-    @Test func reopenClearsCompletion() async throws {
+    @Test func completingAlreadyCompletedTaskYieldsNoDuplicateNext() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "日报", deadline: Date(timeIntervalSinceNow: 3600), recurrence: .daily)
+        t.isCompleted = true; t.completedAt = .now
+        ctx.insert(t); try ctx.save()
+
+        let r = try JSONDecoder().decode(UpdateResult.self, from: Data(try await h.call("update_task", ["id": .string(t.id.uuidString), "completed": true]).utf8))
+        #expect(r.next == nil)
+        // 幂等:不得冒出第二条未完成的重复出现(有则为 1)
+        #expect(try decodeArray(try await h.call("list_tasks", ["completed": false])).count == 0)
+    }
+
+    @Test func reopeningViaUpdateClearsCompletion() async throws {
         let (h, ctx, _) = try makeHandlers()
         let t = TodoTask(title: "恢复我"); t.isCompleted = true; t.completedAt = .now
         ctx.insert(t); try ctx.save()
 
-        let dto = try decodeTask(try await h.call("reopen_task", ["id": .string(t.id.uuidString)]))
-        #expect(dto.isCompleted == false)
+        let result = try JSONDecoder().decode(UpdateResult.self, from: Data(try await h.call("update_task", ["id": .string(t.id.uuidString), "completed": false]).utf8))
+        #expect(result.task.isCompleted == false)
+        #expect(result.next == nil)
+    }
+
+    @Test func updateTaskWithoutCompletedLeavesCompletionState() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "不动我"); ctx.insert(t); try ctx.save()
+
+        let result = try JSONDecoder().decode(UpdateResult.self, from: Data(try await h.call("update_task", ["id": .string(t.id.uuidString), "title": "改个名"]).utf8))
+        #expect(result.task.isCompleted == false)
+        #expect(result.task.title == "改个名")
     }
 
     @Test func snoozeSetsSnoozeWithoutTouchingNotifications() async throws {
@@ -290,10 +315,10 @@ struct MCPToolHandlersTests {
 
         let start = ISO8601Date.string(Date(timeIntervalSince1970: 2000))
         let set = try await h.call("update_task", ["id": .string(t.id.uuidString), "startDate": .string(start)])
-        #expect(try decodeTask(set).startDate == start)
+        #expect(try decodeUpdatedTask(set).startDate == start)
 
         let cleared = try await h.call("update_task", ["id": .string(t.id.uuidString), "startDate": .null])
-        #expect(try decodeTask(cleared).startDate == nil)
+        #expect(try decodeUpdatedTask(cleared).startDate == nil)
     }
 
     // MARK: - Recurrence
@@ -316,10 +341,10 @@ struct MCPToolHandlersTests {
         let t = TodoTask(title: "改重复"); ctx.insert(t); try ctx.save()
 
         let set = try await h.call("update_task", ["id": .string(t.id.uuidString), "recurrence": "weekly"])
-        #expect(try decodeTask(set).recurrence == "weekly")
+        #expect(try decodeUpdatedTask(set).recurrence == "weekly")
 
         let cleared = try await h.call("update_task", ["id": .string(t.id.uuidString), "recurrence": .null])
-        #expect(try decodeTask(cleared).recurrence == nil)
+        #expect(try decodeUpdatedTask(cleared).recurrence == nil)
     }
 
     // MARK: - Urgency override
@@ -336,12 +361,12 @@ struct MCPToolHandlersTests {
         let t = TodoTask(title: "改紧急"); ctx.insert(t); try ctx.save()
 
         let set = try await h.call("update_task", ["id": .string(t.id.uuidString), "urgent": true])
-        #expect(try decodeTask(set).isUrgent == true)
+        #expect(try decodeUpdatedTask(set).isUrgent == true)
         #expect(t.urgencyOverride == true)
 
         let cleared = try await h.call("update_task", ["id": .string(t.id.uuidString), "urgent": .null])
         #expect(t.urgencyOverride == nil)   // back to auto (no deadline → not urgent)
-        #expect(try decodeTask(cleared).isUrgent == false)
+        #expect(try decodeUpdatedTask(cleared).isUrgent == false)
     }
 
     // MARK: - DTO exposes snooze

@@ -100,7 +100,7 @@ struct MCPDispatcher {
             "recurrence": ["type": "string", "enum": ["daily", "weekdays", "weekly", "monthly"]],
             "urgent": ["type": "boolean", "description": "Manual urgency override; omit for automatic (deadline-based)"],
         ], required: ["title"]),
-        toolEntry("update_task", "Update fields of an existing task; only provided fields change. Send deadline/startDate/recurrence/urgent as null to clear them.", [
+        toolEntry("update_task", "Update fields of an existing task; only provided fields change. Send deadline/startDate/recurrence/urgent as null to clear them. completed:true completes the task (recurring tasks spawn the next occurrence), false reopens. Returns {task, next}.", [
             "id": ["type": "string"],
             "title": ["type": "string"],
             "notes": ["type": "string"],
@@ -110,11 +110,8 @@ struct MCPDispatcher {
             "tags": ["type": "array", "items": ["type": "string"]],
             "recurrence": ["type": ["string", "null"], "enum": ["daily", "weekdays", "weekly", "monthly", nil], "description": "Recurrence rule, or null to clear"],
             "urgent": ["type": ["boolean", "null"], "description": "Manual urgency override, or null to revert to automatic"],
+            "completed": ["type": "boolean", "description": "true completes (recurring tasks spawn the next occurrence), false reopens"],
         ], required: ["id"]),
-        toolEntry("complete_task", "Mark a task complete; returns the next occurrence if it recurs.",
-             ["id": ["type": "string"]], required: ["id"]),
-        toolEntry("reopen_task", "Reopen a completed task.",
-             ["id": ["type": "string"]], required: ["id"]),
         toolEntry("snooze_task", "Snooze a task until a date (ISO-8601).",
              ["id": ["type": "string"], "until": ["type": "string"]], required: ["id", "until"]),
         toolEntry("delete_task", "Delete a task.",
