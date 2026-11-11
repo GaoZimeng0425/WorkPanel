@@ -29,8 +29,8 @@ struct KanbanLensView: View {
     }
 
     private func activeTasks(in column: BoardColumn) -> [TodoTask] {
-        filter.apply(tasks).filter { !$0.isCompleted && columnID(for: $0) == column.id }
-             .sorted { $0.boardOrder < $1.boardOrder }
+        column.sort.sorted(
+            filter.apply(tasks).filter { !$0.isCompleted && columnID(for: $0) == column.id })
     }
 
     private var archivedTasks: [TodoTask] {
@@ -194,6 +194,35 @@ struct KanbanLensView: View {
 
     private func columnActionsPopover(for column: BoardColumn) -> some View {
         VStack(alignment: .leading, spacing: 2) {
+            // 排序小节:当前生效项打勾,点击切换并落库
+            Text("排序")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.textTertiary)
+                .padding(.horizontal, 9)
+            ForEach(ColumnSortOption.allCases) { option in
+                Button {
+                    store.setSort(column, to: option)
+                    try? context.saveTracking()
+                    actionColumnID = nil
+                } label: {
+                    HStack {
+                        Text(option.label)
+                        Spacer()
+                        if column.sort == option {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 7)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            Rectangle().fill(Theme.stroke).frame(height: 1)
+                .padding(.vertical, 4)
             columnActionRow("重命名", systemImage: "pencil") {
                 renameText = column.name
                 renaming = column
