@@ -27,7 +27,7 @@ struct TaskCardView<Trailing: View>: View {
                     .font(.system(size: Theme.titleFontSize))
                     .foregroundStyle(task.isCompleted ? Theme.textSecondary : Theme.textPrimary)
                     .strikethrough(task.isCompleted)
-                    .lineLimit(2)
+                    .lineLimit(3)
 
                 HStack(spacing: 6) {
                     if let key = task.jiraKey { jiraLinkControls(key) }
@@ -62,8 +62,7 @@ struct TaskCardView<Trailing: View>: View {
             Spacer(minLength: 0)
             trailing()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 12)
+        .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .noirCard()
     }
