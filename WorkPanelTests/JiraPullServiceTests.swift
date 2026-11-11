@@ -96,7 +96,7 @@ struct JiraPullServiceTests {
         let r = await pull(FakeFetcher(scripts: [[issue(key: "PROJ-1", summary: "修复登录",
                                                         priorityName: "High", duedateDay: "2026-11-20",
                                                         descriptionText: "描述")]]), into: ctx)
-        #expect(r == JiraPullReport(inserted: 1))
+        #expect(r == JiraPullReport(inserted: 1, insertedTitles: ["[PROJ-1] 修复登录"]))
         let tasks = try allTasks(ctx)
         #expect(tasks.count == 1)
         let t = try #require(tasks.first)
@@ -115,7 +115,7 @@ struct JiraPullServiceTests {
         let now = Date(timeIntervalSince1970: 2000)
         let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "Done")]]),
                            into: ctx, now: now)
-        #expect(r == JiraPullReport(inserted: 1))
+        #expect(r == JiraPullReport(inserted: 1, insertedTitles: ["[A-1] 远端标题"]))   // 新建即 Done 也计入
         let t = try #require(try allTasks(ctx).first)
         #expect(t.isCompleted == true)
         #expect(t.completedAt == now)
@@ -347,6 +347,7 @@ struct JiraPullServiceTests {
         let r = await pull(FakeFetcher(scripts: [[issue(key: "OC-1", statusName: "待办"),
                                                   issue(key: "OC-2", statusName: "正在进行")]]), into: ctx)
         #expect(r.inserted == 2)
+        #expect(r.insertedTitles == ["[OC-1] 远端标题", "[OC-2] 远端标题"])   // 按远端返回顺序收集
         let byKey = Dictionary(uniqueKeysWithValues: try allTasks(ctx).map { ($0.jiraKey!, $0) })
         #expect(byKey["OC-1"]?.columnID != nil)          // 命中映射
         #expect(byKey["OC-2"]?.columnID == nil)          // 列名不存在 → nil(显示回退第一列)

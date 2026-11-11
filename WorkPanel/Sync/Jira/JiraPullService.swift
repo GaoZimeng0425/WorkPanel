@@ -3,6 +3,7 @@ import SwiftData
 
 struct JiraPullReport: Equatable {
     var inserted = 0
+    var insertedTitles: [String] = []  // 本次插入任务的标题("[KEY] summary",含新建即完成)
     var updated = 0        // 远端字段更新
     var completed = 0      // 既有任务被标完成(新建即完成计 inserted)
     var skipped = 0        // 本地优先跳过(含本地已完成)
@@ -69,6 +70,7 @@ struct JiraPullService {
                 if issue.statusCategoryKey == "Done" { markCompleted(t, now: now) }
                 context.insert(t)
                 targetByKey[issue.key] = t
+                report.insertedTitles.append(t.title)
                 report.inserted += 1
             }
         }
