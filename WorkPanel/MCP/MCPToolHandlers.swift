@@ -44,7 +44,6 @@ final class MCPToolHandlers {
         case "list_jira_tasks": return try listJiraTasks(args)
         case "create_task":  return try await createTask(args)
         case "update_task":  return try await updateTask(args)
-        case "snooze_task":   return try snoozeTask(args)
         case "delete_task":   return try deleteTask(args)
         case "move_task":     return try moveTask(args)
         default: throw ToolError.badArgument("Unknown tool: \(name)")
@@ -194,16 +193,6 @@ final class MCPToolHandlers {
         scheduler.cancel(for: task)
         await scheduler.schedule(for: task)
         return try encode(UpdateResult(task: dto(task), next: nil))
-    }
-
-    private func snoozeTask(_ args: JSONValue) throws -> String {
-        guard let s = args["until"]?.stringValue, let date = ISO8601Date.date(s) else {
-            throw ToolError.badArgument("Missing or invalid 'until'")
-        }
-        let task = try fetchTask(requireID(args))
-        todo.snooze(task, until: date)
-        try context.saveTracking()
-        return try encode(dto(task))
     }
 
     private func deleteTask(_ args: JSONValue) throws -> String {

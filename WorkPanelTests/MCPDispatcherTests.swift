@@ -29,16 +29,17 @@ struct MCPDispatcherTests {
         #expect(r["result"]?["capabilities"]?["tools"] != nil)
     }
 
-    @Test func toolsListReturnsTenTools() async throws {
+    @Test func toolsListReturnsCatalog() async throws {
         let d = try makeDispatcher()
         let r = try await send(d, ["jsonrpc": "2.0", "id": 2, "method": "tools/list"])
         let tools = r["result"]?["tools"]?.arrayValue ?? []
-        #expect(tools.count == 9)
+        #expect(tools.count == 8)
         let names = Set(tools.compactMap { $0["name"]?.stringValue })
         #expect(names.contains("create_task"))
         #expect(names.contains("move_task"))
         #expect(names.contains("list_jira_tasks"))
         #expect(!names.contains("complete_task") && !names.contains("reopen_task"))
+        #expect(!names.contains("snooze_task"))
     }
 
     @Test func toolsCallDispatchesToHandler() async throws {

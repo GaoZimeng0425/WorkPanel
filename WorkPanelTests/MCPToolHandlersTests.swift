@@ -224,17 +224,6 @@ struct MCPToolHandlersTests {
         #expect(result.task.title == "改个名")
     }
 
-    @Test func snoozeSetsSnoozeWithoutTouchingNotifications() async throws {
-        let (h, ctx, mock) = try makeHandlers()
-        let t = TodoTask(title: "推迟我")
-        ctx.insert(t); try ctx.save()
-        let until = ISO8601Date.string(Date(timeIntervalSinceNow: 86400))
-
-        _ = try await h.call("snooze_task", ["id": .string(t.id.uuidString), "until": .string(until)])
-        #expect(t.snoozedUntil != nil)
-        #expect(mock.added.isEmpty && mock.removed.isEmpty)   // snooze never touches notifications
-    }
-
     @Test func deleteRemovesTaskAndNotification() async throws {
         let (h, ctx, mock) = try makeHandlers()
         let t = TodoTask(title: "删除我")
@@ -373,10 +362,10 @@ struct MCPToolHandlersTests {
 
     @Test func dtoExposesSnoozedUntil() async throws {
         let (h, ctx, _) = try makeHandlers()
-        let t = TodoTask(title: "推迟我"); ctx.insert(t); try ctx.save()
+        let t = TodoTask(title: "推迟我"); t.snoozedUntil = Date(timeIntervalSince1970: 99999)
+        ctx.insert(t); try ctx.save()
         let until = ISO8601Date.string(Date(timeIntervalSince1970: 99999))
 
-        _ = try await h.call("snooze_task", ["id": .string(t.id.uuidString), "until": .string(until)])
         let dto = try decodeTask(try await h.call("get_task", ["id": .string(t.id.uuidString)]))
         #expect(dto.snoozedUntil == until)
     }

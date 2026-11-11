@@ -112,8 +112,6 @@ struct MCPDispatcher {
             "urgent": ["type": ["boolean", "null"], "description": "Manual urgency override, or null to revert to automatic"],
             "completed": ["type": "boolean", "description": "true completes (recurring tasks spawn the next occurrence), false reopens"],
         ], required: ["id"]),
-        toolEntry("snooze_task", "Snooze a task until a date (ISO-8601).",
-             ["id": ["type": "string"], "until": ["type": "string"]], required: ["id", "until"]),
         toolEntry("delete_task", "Delete a task.",
              ["id": ["type": "string"]], required: ["id"]),
         toolEntry("move_task", "Move a task to a board column (columnID:null clears status). Optional index for position.",
