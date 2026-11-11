@@ -176,6 +176,11 @@ final class MCPToolHandlers {
         tags.register(names: task.tags)
         try context.saveTracking()
 
+        if args.contains("completed"),
+           args["completed"]?.boolValue == nil,
+           args["completed"]?.isNull != true {
+            throw ToolError.badArgument("Invalid 'completed'")
+        }
         if args["completed"]?.boolValue == true {
             var next: TodoTask? = nil
             if !task.isCompleted {

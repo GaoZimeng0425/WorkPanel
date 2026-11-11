@@ -217,6 +217,16 @@ struct MCPToolHandlersTests {
         #expect(result.next == nil)
     }
 
+    @Test func updateTaskRejectsNonBooleanCompleted() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "完成我"); ctx.insert(t); try ctx.save()
+
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("update_task", ["id": .string(t.id.uuidString), "completed": "true"])
+        }
+        #expect(t.isCompleted == false)   // 非布尔被拒,完成态不动
+    }
+
     @Test func updateTaskWithoutCompletedLeavesCompletionState() async throws {
         let (h, ctx, _) = try makeHandlers()
         let t = TodoTask(title: "不动我"); ctx.insert(t); try ctx.save()
