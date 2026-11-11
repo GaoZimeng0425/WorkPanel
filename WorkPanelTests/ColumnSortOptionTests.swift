@@ -51,13 +51,14 @@ struct ColumnSortOptionTests {
         let tasks = [
             TodoTask(title: "任务10", boardOrder: 0),
             TodoTask(title: "任务2", boardOrder: 1),
-            TodoTask(title: "同乙", boardOrder: 4),
-            TodoTask(title: "同甲", boardOrder: 3),
+            TodoTask(title: "同", boardOrder: 4),
+            TodoTask(title: "同", boardOrder: 3),
             TodoTask(title: "任务1", boardOrder: 2),
         ]
-        // localizedStandard 按数值感知排序:"任务2" < "任务10"
-        #expect(ColumnSortOption.title.sorted(tasks).map(\.title)
-                == ["任务1", "任务2", "任务10", "同甲", "同乙"])
+        // localizedStandard 按数值感知排序:"任务2" < "任务10";同名标题交给 boardOrder 决胜
+        let sorted = ColumnSortOption.title.sorted(tasks)
+        #expect(sorted.map(\.title) == ["任务1", "任务2", "任务10", "同", "同"])
+        #expect(sorted.map(\.boardOrder) == [2, 1, 0, 3, 4])   // 同名对按 boardOrder 分先后
     }
 
     @Test func fromRaw为nil或未知字符串时回退manual() {
