@@ -46,12 +46,17 @@ struct SyncColumnDTO: Codable {
     var id: UUID
     var name: String
     var order: Int
+    var sortRaw: String?
     var modifiedAt: Date
 
-    init(_ c: BoardColumn) { id = c.id; name = c.name; order = c.order; modifiedAt = c.modifiedAt }
+    init(_ c: BoardColumn) {
+        id = c.id; name = c.name; order = c.order; sortRaw = c.sortRaw; modifiedAt = c.modifiedAt
+    }
 
     func makeModel() -> BoardColumn { let c = BoardColumn(name: name, order: order); apply(to: c); return c }
-    func apply(to c: BoardColumn) { c.id = id; c.name = name; c.order = order; c.modifiedAt = modifiedAt }
+    func apply(to c: BoardColumn) {
+        c.id = id; c.name = name; c.order = order; c.sortRaw = sortRaw; c.modifiedAt = modifiedAt
+    }
 }
 
 struct SyncDayPlanDTO: Codable {

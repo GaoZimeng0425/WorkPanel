@@ -47,6 +47,11 @@ final class BoardStore {
         column.name = name
     }
 
+    /// 设置列内排序选项;选手动时清空 sortRaw(nil 即手动)。
+    func setSort(_ column: BoardColumn, to option: ColumnSortOption) {
+        column.sortRaw = option == .manual ? nil : option.rawValue
+    }
+
     /// 按传入数组顺序重新赋 order(0,1,2,…)。
     func reorder(_ ordered: [BoardColumn]) {
         for (i, col) in ordered.enumerated() { col.order = i }
