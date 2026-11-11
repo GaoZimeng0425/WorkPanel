@@ -128,6 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func toggleSettings() {
         settings.toggle {
             SettingsView(onClose: { [weak self] in self?.settings.hide() })
+                .modelContainer(SharedModel.container)
         }
     }
 
