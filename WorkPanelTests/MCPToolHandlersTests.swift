@@ -68,6 +68,39 @@ struct MCPToolHandlersTests {
         #expect(cols.map(\.name) == ["计划中", "开发中"])
     }
 
+    // MARK: - list_jira_tasks
+
+    @Test func listJiraTasksReturnsOnlyJiraSourced() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let local = TodoTask(title: "本地"); ctx.insert(local)
+        let jira = TodoTask(title: "JIRA-42 修 bug"); jira.jiraKey = "JIRA-42"
+        jira.jiraSyncedAt = Date(timeIntervalSince1970: 1000)
+        ctx.insert(jira); try ctx.save()
+
+        let dtos = try decodeArray(try await h.call("list_jira_tasks", .object([:])))
+        #expect(dtos.count == 1)
+        #expect(dtos[0].jiraKey == "JIRA-42")
+        #expect(dtos[0].jiraSyncedAt == ISO8601Date.string(Date(timeIntervalSince1970: 1000)))
+    }
+
+    @Test func listJiraTasksFiltersByCompleted() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let open = TodoTask(title: "开着"); open.jiraKey = "A-1"; ctx.insert(open)
+        let done = TodoTask(title: "完成"); done.jiraKey = "A-2"
+        done.isCompleted = true; done.completedAt = .now
+        ctx.insert(done); try ctx.save()
+
+        let all = try decodeArray(try await h.call("list_jira_tasks", .object([:])))
+        let closed = try decodeArray(try await h.call("list_jira_tasks", ["completed": true]))
+        #expect(all.count == 2 && closed.count == 1 && closed[0].jiraKey == "A-2")
+    }
+
+    @Test func localTaskDTOSerializesNullJiraFields() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "本地"); ctx.insert(t); try ctx.save()
+        #expect(try decodeTask(try await h.call("get_task", ["id": .string(t.id.uuidString)])).jiraKey == nil)
+    }
+
     @Test func createTaskInsertsAndSchedulesNotification() async throws {
         let (h, ctx, mock) = try makeHandlers()
         let due = ISO8601Date.string(Date(timeIntervalSinceNow: 3600))

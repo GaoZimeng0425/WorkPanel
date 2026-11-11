@@ -33,10 +33,11 @@ struct MCPDispatcherTests {
         let d = try makeDispatcher()
         let r = try await send(d, ["jsonrpc": "2.0", "id": 2, "method": "tools/list"])
         let tools = r["result"]?["tools"]?.arrayValue ?? []
-        #expect(tools.count == 10)
+        #expect(tools.count == 11)
         let names = Set(tools.compactMap { $0["name"]?.stringValue })
         #expect(names.contains("create_task"))
         #expect(names.contains("move_task"))
+        #expect(names.contains("list_jira_tasks"))
     }
 
     @Test func toolsCallDispatchesToHandler() async throws {

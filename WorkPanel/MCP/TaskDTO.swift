@@ -46,6 +46,8 @@ struct TaskDTO: Codable, Equatable {
     let isUrgent: Bool
     let recurrence: String?
     let snoozedUntil: String?
+    let jiraKey: String?
+    let jiraSyncedAt: String?
 
     init(_ task: TodoTask, columnName: String?, now: Date = .now) {
         id = task.id.uuidString
@@ -63,6 +65,8 @@ struct TaskDTO: Codable, Equatable {
         isUrgent = task.isUrgent(asOf: now)
         recurrence = task.recurrence?.rawValue
         snoozedUntil = task.snoozedUntil.map(ISO8601Date.string)
+        jiraKey = task.jiraKey
+        jiraSyncedAt = task.jiraSyncedAt.map(ISO8601Date.string)
     }
 }
 

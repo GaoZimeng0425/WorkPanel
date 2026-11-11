@@ -41,6 +41,7 @@ final class MCPToolHandlers {
         case "list_tasks":   return try listTasks(args)
         case "get_task":     return try getTask(args)
         case "list_columns": return try listColumns()
+        case "list_jira_tasks": return try listJiraTasks(args)
         case "create_task":  return try await createTask(args)
         case "update_task":  return try await updateTask(args)
         case "complete_task": return try await completeTask(args)
@@ -89,6 +90,15 @@ final class MCPToolHandlers {
 
     private func listColumns() throws -> String {
         try encode(board.columns().map(ColumnDTO.init))
+    }
+
+    private func listJiraTasks(_ args: JSONValue) throws -> String {
+        var tasks = ((try? context.fetch(FetchDescriptor<TodoTask>())) ?? [])
+            .filter { $0.jiraKey != nil }
+        if let completed = args["completed"]?.boolValue {
+            tasks = tasks.filter { $0.isCompleted == completed }
+        }
+        return try encode(tasks.map(dto))
     }
 
     // MARK: - Create / update

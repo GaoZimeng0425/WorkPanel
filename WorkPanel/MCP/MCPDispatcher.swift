@@ -87,6 +87,8 @@ struct MCPDispatcher {
         toolEntry("get_task", "Get a single task by id.",
              ["id": ["type": "string"]], required: ["id"]),
         toolEntry("list_columns", "List board columns.", [:]),
+        toolEntry("list_jira_tasks", "List tasks pulled from Jira (all, or filtered by completion).",
+             ["completed": ["type": "boolean"]]),
         toolEntry("create_task", "Create a new task.", [
             "title": ["type": "string"],
             "notes": ["type": "string"],
