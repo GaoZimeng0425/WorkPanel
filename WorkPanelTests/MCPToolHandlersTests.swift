@@ -95,7 +95,9 @@ struct MCPToolHandlersTests {
 
         let all = try decodeArray(try await h.call("list_jira_tasks", .object([:])))
         let closed = try decodeArray(try await h.call("list_jira_tasks", ["completed": true]))
+        let stillOpen = try decodeArray(try await h.call("list_jira_tasks", ["completed": false]))
         #expect(all.count == 2 && closed.count == 1 && closed[0].jiraKey == "A-2")
+        #expect(stillOpen.map(\.jiraKey) == ["A-1"])
     }
 
     @Test func localTaskDTOSerializesNullJiraFields() async throws {
