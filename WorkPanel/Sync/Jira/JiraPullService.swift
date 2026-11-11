@@ -190,7 +190,19 @@ enum JiraPullRunner {
         if noticeOnSuccess || report.failedMessage != nil {
             Notice.show(summary(report))
         }
+        if let c = toastContent(report) {
+            NemoNotchToast.show(app: "WorkPanel", title: c.title, body: c.body,
+                                icon: "sf:bell.badge", jumpBundleId: "com.nemo.BrightnessApp.WorkPanel")
+        }
         return report
+    }
+
+    /// 有新任务时的 NemoNotch 卡片文案;失败或零新增返回 nil(不弹)。一次拉取只调一次 show。
+    static func toastContent(_ r: JiraPullReport) -> (title: String, body: String)? {
+        guard r.failedMessage == nil, r.inserted > 0 else { return nil }
+        var body = r.insertedTitles.prefix(3).joined(separator: "；")
+        if r.insertedTitles.count > 3 { body += "；等 \(r.insertedTitles.count) 项" }
+        return (title: "Jira 新增 \(r.inserted) 个任务", body: body)
     }
 
     static func summary(_ r: JiraPullReport) -> String {

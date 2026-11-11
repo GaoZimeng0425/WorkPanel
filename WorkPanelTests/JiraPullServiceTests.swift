@@ -397,4 +397,32 @@ struct JiraPullServiceTests {
         let discovered = Set(AppSettings.jiraDiscoveredStatuses.map { "\($0.project)|\($0.status)" })
         #expect(discovered == ["OC|正在进行", "AAA|待办"])
     }
+
+    // MARK: - 新任务 NemoNotch 提示文案
+
+    @Test func toastContentNilWhenFailedOrNothingInserted() {
+        #expect(JiraPullRunner.toastContent(JiraPullReport()) == nil)
+        #expect(JiraPullRunner.toastContent(
+            JiraPullReport(inserted: 2, insertedTitles: ["[A-1] 一", "[A-2] 二"],
+                           failedMessage: "拉取失败")) == nil)
+    }
+
+    @Test func toastContentListsUpToThreeTitles() {
+        let c = JiraPullRunner.toastContent(
+            JiraPullReport(inserted: 3, insertedTitles: ["[A-1] 一", "[A-2] 二", "[A-3] 三"]))
+        #expect(c?.title == "Jira 新增 3 个任务")
+        #expect(c?.body == "[A-1] 一；[A-2] 二；[A-3] 三")
+        let single = JiraPullRunner.toastContent(
+            JiraPullReport(inserted: 1, insertedTitles: ["[A-1] 一"]))
+        #expect(single?.title == "Jira 新增 1 个任务")
+        #expect(single?.body == "[A-1] 一")
+    }
+
+    @Test func toastContentTruncatesBeyondThreeTitles() {
+        let c = JiraPullRunner.toastContent(
+            JiraPullReport(inserted: 5,
+                           insertedTitles: ["[A-1] 一", "[A-2] 二", "[A-3] 三", "[A-4] 四", "[A-5] 五"]))
+        #expect(c?.title == "Jira 新增 5 个任务")
+        #expect(c?.body == "[A-1] 一；[A-2] 二；[A-3] 三；等 5 项")
+    }
 }
