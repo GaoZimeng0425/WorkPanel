@@ -211,4 +211,13 @@ struct JiraClientTests {
         let (issues, _) = try JiraClient.parseIssues(data)
         #expect(issues.first?.descriptionText == "步骤一\n步骤二")
     }
+
+    // MARK: - 浏览链接
+
+    @MainActor @Test func jiraBrowseURLUsesDomainAndKey() {
+        AppSettings.defaults.set("antalpha.atlassian.net", forKey: AppSettings.Key.jiraDomain)
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraDomain) }
+        #expect(AppSettings.jiraBrowseURL(forKey: "OC-1597")?.absoluteString
+                == "https://antalpha.atlassian.net/browse/OC-1597")
+    }
 }

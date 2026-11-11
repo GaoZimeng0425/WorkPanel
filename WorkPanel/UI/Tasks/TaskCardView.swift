@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// 看板与 TODO 列表共用的任务卡片。仅负责外观;
 /// 菜单 / 拖拽 / contextMenu 等行为由调用方在 `trailing` 槽或外层修饰符注入。
@@ -29,6 +30,7 @@ struct TaskCardView<Trailing: View>: View {
                     .lineLimit(2)
 
                 HStack(spacing: 6) {
+                    if let key = task.jiraKey { jiraLinkControls(key) }
                     Text(Theme.priorityLabel(task.priority))
                         .noirBadge(Theme.priority(task.priority))
                         .lineLimit(1)
@@ -60,8 +62,44 @@ struct TaskCardView<Trailing: View>: View {
             Spacer(minLength: 0)
             trailing()
         }
-        .padding(8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .noirCard()
+    }
+
+    /// Jira 卡片的「打开网页 + 复制链接」小控件。
+    @ViewBuilder
+    private func jiraLinkControls(_ key: String) -> some View {
+        HStack(spacing: 2) {
+            Button {
+                if let url = AppSettings.jiraBrowseURL(forKey: key) {
+                    NSWorkspace.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: 2) {
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.system(size: 9, weight: .semibold))
+                    Text(key)
+                }
+                .noirBadge(Theme.accent)
+                .lineLimit(1)
+            }
+            .buttonStyle(.plain)
+            .help("在浏览器中打开")
+
+            Button {
+                if let url = AppSettings.jiraBrowseURL(forKey: key) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(url.absoluteString, forType: .string)
+                }
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            .buttonStyle(.plain)
+            .help("复制链接")
+        }
     }
 }

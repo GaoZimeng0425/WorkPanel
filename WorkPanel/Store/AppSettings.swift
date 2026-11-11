@@ -146,6 +146,16 @@ struct JiraDiscoveredStatus: Codable, Hashable, Sendable {
 }
 
 extension AppSettings {
+    /// issue 的网页链接:https://{域名}/browse/{key};域名异常返回 nil。
+    static func jiraBrowseURL(forKey key: String) -> URL? {
+        guard let domain = normalizedJiraDomainValue else { return nil }
+        return URL(string: "https://\(domain)/browse/\(key)")
+    }
+
+    private static var normalizedJiraDomainValue: String? {
+        JiraClient.normalizedDomain(defaults.string(forKey: Key.jiraDomain) ?? "")
+    }
+
     /// 项目 → (状态名 → 看板列名)。每机配置,不进导出白名单。
     static var jiraColumnMapping: [String: [String: String]] {
         get {
