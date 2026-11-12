@@ -84,6 +84,8 @@
   `preferredDescending`。
 - `BoardStore`:setSort 换依据时同步写常用方向;新增 toggleSortDirection、clearSort。
 - `SyncColumnDTO.sortDescending: Bool?`(旧文档缺键 → nil → apply 落 false,向后兼容)。
+- 已知限制:混版本前向窗口(v2 设了方向、v1 端随后改该列,最新者胜回写会把 sortDescending 落回
+  false)与 v1 已接受的混版本 ruling 同类,重选方向即恢复,不另做字段级合并。
 
 ### 非目标(更新)
 

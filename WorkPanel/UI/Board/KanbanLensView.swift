@@ -372,6 +372,7 @@ private struct SortChip: View {
                         .font(.system(size: 9, weight: .bold))
                 }
                 .font(.system(size: 10, weight: .bold, design: .rounded))
+                // 原型 .sc-toggle:hover 的 #ffb37a 提亮(Theme 无对应 token)
                 .foregroundStyle(hoveringBody ? Color(red: 1, green: 0.70, blue: 0.48) : Theme.accentText)
                 .padding(.horizontal, 2).padding(.vertical, 1)
                 .contentShape(Rectangle())
@@ -393,6 +394,7 @@ private struct SortChip: View {
             .help("清除排序(回到手动)")
         }
         .padding(.leading, 8).padding(.trailing, 5).padding(.vertical, 2)
+        .fixedSize()
         .background(Capsule(style: .continuous)
             .fill(hovering ? Theme.accent.opacity(0.26) : Theme.accentSoft))
         .onHover { hovering = $0 }
