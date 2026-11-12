@@ -47,9 +47,22 @@ final class BoardStore {
         column.name = name
     }
 
-    /// 设置列内排序选项;选手动时清空 sortRaw(nil 即手动)。
+    /// 设置列内排序选项;非手动按常用方向写方向位,选手动时清空 sortRaw 且方向归 false(nil 即手动)。
     func setSort(_ column: BoardColumn, to option: ColumnSortOption) {
         column.sortRaw = option == .manual ? nil : option.rawValue
+        column.sortDescending = option == .manual ? false : option.preferredDescending
+    }
+
+    /// 翻转列内排序方向;手动排序无方向,不动作。
+    func toggleSortDirection(_ column: BoardColumn) {
+        guard column.sort != .manual else { return }
+        column.sortDescending.toggle()
+    }
+
+    /// 彻底清空列内排序设置(回手动,方向归 false)。
+    func clearSort(_ column: BoardColumn) {
+        column.sortRaw = nil
+        column.sortDescending = false
     }
 
     /// 按传入数组顺序重新赋 order(0,1,2,…)。

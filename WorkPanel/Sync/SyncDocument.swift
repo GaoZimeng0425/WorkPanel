@@ -47,15 +47,18 @@ struct SyncColumnDTO: Codable {
     var name: String
     var order: Int
     var sortRaw: String?
+    var sortDescending: Bool?   // v1 旧文档缺此键 → 解码 nil → apply 落 false
     var modifiedAt: Date
 
     init(_ c: BoardColumn) {
-        id = c.id; name = c.name; order = c.order; sortRaw = c.sortRaw; modifiedAt = c.modifiedAt
+        id = c.id; name = c.name; order = c.order; sortRaw = c.sortRaw
+        sortDescending = c.sortDescending; modifiedAt = c.modifiedAt
     }
 
     func makeModel() -> BoardColumn { let c = BoardColumn(name: name, order: order); apply(to: c); return c }
     func apply(to c: BoardColumn) {
-        c.id = id; c.name = name; c.order = order; c.sortRaw = sortRaw; c.modifiedAt = modifiedAt
+        c.id = id; c.name = name; c.order = order; c.sortRaw = sortRaw
+        c.sortDescending = sortDescending ?? false; c.modifiedAt = modifiedAt
     }
 }
 

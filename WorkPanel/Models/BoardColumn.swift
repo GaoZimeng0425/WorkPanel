@@ -7,6 +7,7 @@ final class BoardColumn {
     var name: String
     var order: Int
     var sortRaw: String? = nil         // 列内排序选项的 rawValue,nil 即手动
+    var sortDescending: Bool = false   // 列内排序方向(true 降序);手动无方向,恒 false
     var modifiedAt: Date = Date()      // 跨机器同步的最新者胜判定
 
     init(name: String, order: Int) {
