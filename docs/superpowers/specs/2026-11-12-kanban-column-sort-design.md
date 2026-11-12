@@ -1,7 +1,7 @@
 # 看板列排序 — 设计
 
 日期:2026-11-12
-状态:待确认
+状态:v1 已实现(401fe83..7ca8c26);同日二轮修订如下,状态待确认→已确认(用户拍板橘色 chip)
 
 ## 意图
 
@@ -56,3 +56,35 @@
 - 单元测试:`ColumnSortOption` 各规则的排序正确性(含平局、无截止、未知 raw 回退);
   `SyncColumnDTO` 带 sortRaw 的编解码及旧文档缺键回退 manual。
 - 看板 UI 手动确认(用户)。
+
+---
+
+## 二轮修订(2026-11-12,方向 + 列头 chip)
+
+用户在 v1 上验证后提出:没有升降序、列头无排序标识。参照 shadcn DataTable 列头排序交互,
+经 HTML 原型(`docs/prototypes/2026-11-12-column-sort-filter.html` v1.3,视觉与交互权威)三轮收敛:
+
+### 定案
+
+- **每列排序状态 = 依据 + 方向**(手动 = 无排序)。
+- **方向**:升/降。各依据「常用方向」:优先级=降、截止日期=升、创建时间=降、标题=升
+  (= v1 现行为)。菜单选依据即开排序并套常用方向。
+- **升降语义**:升序 = 自然序(优先级低→高、截止近→远、创建旧→新、标题 A→Z);降序翻转主键,
+  **无截止任务两个方向都殿后**;平局 boardOrder 决胜不变。
+- **列头 chip(排序生效时常驻)**:「依据 ↑/↓」,橘色(accentText 前景 + accentSoft 底,悬浮提亮,
+  细节以原型为准);点本体翻转方向;点 × 清除回手动。手动态列头无任何排序控件(与 v1 之前一致)。
+- **「⋯」菜单**:排序依据 4 选(手动不再是菜单项)、当前项打勾;「方向」小节升序/降序,
+  手动时置灰。
+- **清除排序唯一入口 = chip 上的 ×**(菜单和其余交互都不回手动)。
+
+### 模型与同步(增量)
+
+- `BoardColumn.sortDescending: Bool = false`(sortRaw 为 nil=手动时无意义,置 false)。
+- `ColumnSortOption`:`sorted(_:descending:)`(sorted(_:) 保留 = 常用方向,兼容既有测试与调用)、
+  `preferredDescending`。
+- `BoardStore`:setSort 换依据时同步写常用方向;新增 toggleSortDirection、clearSort。
+- `SyncColumnDTO.sortDescending: Bool?`(旧文档缺键 → nil → apply 落 false,向后兼容)。
+
+### 非目标(更新)
+
+- MCP、其他透镜仍不动;不做每列自定义「常用方向」配置。

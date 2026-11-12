@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  WorkPanel · 看板列排序控件 — HTML 原型 v1.3(2026-11-12)
+  ============================================================================
+  状态:设计原型,仅供过目;未接入任何产品代码。设计 token 全部取自
+        WorkPanel/UI/DesignSystem/Theme.swift 与 NoirControls/NoirModifiers。
+  v1.1:新增「类型 chip」——生效排序时列头显示当前类型(如「优先级 ↓」),
+        chip 带 × 可删除(点 × 清除回手动),点 chip 本体切换方向。
+  v1.2:图标钮只在升 ↔ 降间翻转,永不回手动;清除唯一入口 = chip ×;
+        菜单「排序依据」去掉「手动」项(选依据即开排序)。
+  v1.3:按用户意见彻底移除独立排序图标钮(chip 里已有 ↑/↓,不再单独放上下按钮)——
+        生效态列头只有 chip(本体切方向 + × 清除);手动态列头无任何排序控件,
+        开排序的唯一入口 = 「⋯」菜单选依据(选即开,自动套常用方向)。
+
+  解决的两个用户反馈:
+    ① 排序没有升降序 —— chip 内建方向(↑/↓),点击翻转。
+    ② 选了排序列头无标识 —— 生效时常驻类型 chip「依据 ↑/↓」。
+
+  交互说明(全部可点):
+    · 手动态:列头无任何排序控件(列名 + 计数 + 「+」 + 「⋯」,与现有 app 一致)。
+        开排序的唯一入口 = 「⋯」菜单选依据。
+    · 排序生效:列头计数右侧显示类型 chip(noirBadge 小号样式:accentText 前景 +
+        accentSoft 底):「依据 ↑/↓」。点 chip 本体 = 翻转方向(升↔降);点 chip 上的 ×
+        = 清除排序回手动(chip 消失)。× 是清除排序的唯一入口。
+    · 「⋯」菜单 = 「排序依据」4 选(优先级/截止日期/创建时间/标题,打勾;**无「手动」项**,
+        选依据即开排序)+「方向」小节(升序/降序,手动时禁用置灰),另保留 重命名 / 删除。
+        选依据自动套常用方向:优先级=降序(高在前)、截止日期=升序(近在前)、
+        创建时间=降序(新在前)、标题=升序(拼音序)——与现有 ColumnSortOption.sorted() 行为对齐。
+        chip 本体与菜单「方向」互通:chip 文案、菜单打勾、卡片顺序始终同步。
+    · 卡片按当前排序实时重排(带 FLIP 动画);平局回退手动拖拽序,
+      卡片右上角 #n 为该列手动序号,便于观察排序与决胜效果。
+    · 「+」「+ 添加任务」「重命名」「删除」仅为视觉占位,无功能。
+
+  待用户拍板(页底也有同款备注):
+    ① chip 配色:当前交互橙 accentText 前景 + accentSoft 底;备选中性白 textSecondary
+      前景 + surfaceEmphasis 底(更克制,但标识性弱)。
+  ============================================================================
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorkPanel · 看板列排序控件 原型</title>
+<style>
+  /* ===== WorkPanel Theme.swift token ===== */
+  :root{
+    --panel-top:#0a0908; --panel-bottom:#010101;
+    --surface-subtle:rgba(255,255,255,.045);
+    --surface:rgba(255,255,255,.07);
+    --surface-emphasis:rgba(255,255,255,.12);
+    --stroke:rgba(255,255,255,.10);
+    --stroke-strong:rgba(255,255,255,.15);
+    --accent:#ff8c15; --accent-text:#ff9447;
+    --accent-soft:rgba(255,140,21,.18);
+    --accent-stroke:rgba(255,140,21,.42);
+    --text-primary:rgba(255,255,255,.94);
+    --text-secondary:rgba(255,255,255,.62);
+    --text-tertiary:rgba(255,255,255,.42);
+    --text-muted:rgba(255,255,255,.30);
+    --p-high:#ff453a; --p-medium:#ffb340; --p-low:rgba(255,255,255,.42);
+    --deadline:#4da6ff; --tag:#5bc16e;
+    --r-card:8px; --r-column:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:#030303}
+  body{
+    font-family:-apple-system,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    background:radial-gradient(1100px 520px at 50% -8%, #0d0c0a, #030303 62%) fixed;
+    color:var(--text-primary);
+    min-height:100vh; padding:0 16px 56px;
+  }
+  ::selection{background:var(--accent-soft)}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  button:focus-visible{outline:1.5px solid var(--accent);outline-offset:2px;border-radius:6px}
+  svg{display:block}
+
+  /* ===== 原型备注条(非 app UI) ===== */
+  .page{max-width:968px;margin:0 auto}
+  .notes{font-size:12px;line-height:1.75;color:var(--text-secondary);margin:26px 0 14px}
+  .notes h1{font-size:13px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .notes .pill{font-size:10px;font-weight:700;color:var(--accent-text);background:var(--accent-soft);
+    border-radius:999px;padding:2px 8px;letter-spacing:.02em}
+  .notes li{list-style:none;padding-left:14px;position:relative}
+  .notes li::before{content:"";position:absolute;left:0;top:.72em;width:5px;height:5px;border-radius:50%;
+    background:var(--accent);opacity:.7}
+  .notes b{color:var(--text-primary);font-weight:600}
+  .notes.foot{margin-top:18px}
+  .notes.foot li::before{background:var(--p-medium)}
+
+  /* ===== 窗口 ===== */
+  .window{
+    border:1px solid var(--stroke-strong);border-radius:12px;overflow:hidden;
+    background:linear-gradient(180deg,var(--panel-top) 0%,var(--panel-bottom) 100%);
+    box-shadow:0 24px 80px rgba(0,0,0,.65), 0 2px 10px rgba(0,0,0,.5);
+  }
+  .titlebar{position:relative;height:38px;display:flex;align-items:center;padding:0 13px;
+    border-bottom:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.015)}
+  .lights{display:flex;gap:8px}
+  .lights i{width:12px;height:12px;border-radius:50%}
+  .lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
+  .titlebar .wt{position:absolute;left:0;right:0;text-align:center;font-size:12px;font-weight:600;
+    color:var(--text-tertiary);pointer-events:none}
+
+  /* ===== 看板 ===== */
+  .board{display:flex;align-items:flex-start;gap:12px;padding:12px}
+  .column{
+    width:260px;flex:none;display:flex;flex-direction:column;gap:8px;
+    padding:10px;min-height:432px;border-radius:var(--r-column);
+    background:var(--surface);border:1px solid var(--stroke);
+  }
+  .col-head{display:flex;align-items:center;gap:8px}
+  .col-name{font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap;
+    min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+  .col-count{font-size:11px;font-weight:500;color:var(--text-tertiary);font-variant-numeric:tabular-nums}
+  .head-spacer{flex:1}
+
+  /* —— 当前排序类型 chip(v1.3:生效时列头唯一排序控件,计数右侧)——
+       小号 noirBadge 变体:accentText 前景 + accentSoft 底,rounded 10px bold。
+       v1.3 已移除独立排序图标钮:本体切方向 + × 清除,全部收进 chip。 */
+  .sort-chip{
+    flex:none;display:inline-flex;align-items:center;gap:2px;
+    border-radius:999px;background:var(--accent-soft);
+    padding:2px 5px 2px 8px;transition:background .12s ease-out;
+  }
+  .sort-chip:hover{background:rgba(255,140,21,.26)}
+  .sc-toggle{
+    display:inline-flex;align-items:center;gap:3px;border-radius:999px;padding:1px 2px;
+    font-family:"SF Pro Rounded","SF Pro Text",-apple-system,"PingFang SC",sans-serif;
+    font-size:10px;font-weight:700;line-height:1.5;letter-spacing:.02em;
+    color:var(--accent-text);white-space:nowrap;
+    transition:color .12s ease-out;
+  }
+  .sc-toggle svg{width:9px;height:9px}
+  .sc-toggle:hover{color:#ffb37a}
+  .sc-x{
+    flex:none;width:14px;height:14px;display:grid;place-items:center;border-radius:50%;
+    color:rgba(255,148,71,.68);transition:background .12s ease-out,color .12s ease-out;
+  }
+  .sc-x svg{width:9px;height:9px}
+  .sc-x:hover{color:var(--text-primary);background:rgba(255,255,255,.14)}
+
+  /* —— 列头其余按钮(复刻 NoirIconButtonStyle / noirPickerPill)—— */
+  .icon-btn{
+    width:22px;height:22px;flex:none;border-radius:50%;display:grid;place-items:center;
+    color:var(--text-tertiary);transition:background .12s ease-out,color .12s ease-out,transform .12s ease-out,opacity .12s ease-out;
+  }
+  .icon-btn svg{width:13px;height:13px}
+  .icon-btn:hover{background:var(--surface-emphasis);color:var(--text-primary)}
+  .icon-btn:active{opacity:.7;transform:scale(.94)}
+  .ellipsis-pill{
+    flex:none;display:flex;align-items:center;border-radius:999px;padding:4px 9px;
+    font-size:11px;font-weight:600;color:var(--text-tertiary);
+    background:var(--surface-emphasis);border:1px solid var(--stroke);
+    transition:background .12s ease-out,color .12s ease-out,border-color .12s ease-out;
+  }
+  .ellipsis-pill svg{width:14px;height:14px}
+  .ellipsis-pill:hover{color:var(--text-primary);background:rgba(255,255,255,.16)}
+  .ellipsis-pill.open{color:var(--accent-text);background:var(--accent-soft);border-color:var(--accent-stroke)}
+    /* 菜单打开时触发钮高亮(shadcn data-state=open 惯例) */
+
+  /* ===== 卡片(TaskCardView + noirCard) ===== */
+  .cards{display:flex;flex-direction:column;gap:8px}
+  .card{
+    display:flex;align-items:flex-start;gap:8px;padding:8px;
+    border-radius:var(--r-card);background:var(--surface-subtle);border:1px solid var(--stroke-strong);
+    will-change:transform;
+  }
+  .card .check{flex:none;width:18px;height:18px;margin:1px 0 0 -3px;color:var(--text-tertiary)}
+  .card .check svg{width:15px;height:15px}
+  .card .check:hover{color:var(--text-secondary)}
+  .dot{flex:none;width:7px;height:7px;border-radius:50%;margin-top:6px}
+  .dot.high{background:var(--p-high);box-shadow:0 0 4px rgba(255,69,58,.55)}
+  .dot.medium{background:var(--p-medium)}
+  .dot.low{background:var(--p-low)}
+  .card .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .card .t{font-size:13px;line-height:1.35;color:var(--text-primary);overflow:hidden;display:-webkit-box;
+    -webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .badges{display:flex;flex-wrap:wrap;gap:6px}
+  .badge{
+    font-family:"SF Pro Rounded","SF Pro Text",-apple-system,"PingFang SC",sans-serif;
+    font-size:10px;font-weight:700;line-height:1.5;letter-spacing:.02em;
+    border-radius:999px;padding:1.5px 7px;white-space:nowrap;
+  }
+  .b-high{color:var(--p-high);background:rgba(255,69,58,.16)}
+  .b-medium{color:var(--p-medium);background:rgba(255,179,64,.16)}
+  .b-low{color:var(--text-tertiary);background:rgba(255,255,255,.07)}
+  .b-dl{color:var(--deadline);background:rgba(77,166,255,.16)}
+  .b-dl.past{color:var(--p-high);background:rgba(255,69,58,.16)}
+  .b-tag{color:var(--tag);background:rgba(91,193,110,.16)}
+  .ord{flex:none;margin-left:auto;font-size:10px;font-weight:600;color:var(--text-muted);
+    padding-top:3px;font-variant-numeric:tabular-nums}
+  .add-task{
+    text-align:left;font-size:12px;color:var(--accent-text);padding:6px 8px;border-radius:6px;
+    transition:background .12s ease-out;
+  }
+  .add-task:hover{background:var(--surface-subtle)}
+
+  .add-col{
+    width:44px;height:60px;flex:none;border-radius:var(--r-column);
+    background:var(--surface);border:1px solid var(--stroke);
+    display:grid;place-items:center;color:var(--text-tertiary);
+    transition:background .12s ease-out,color .12s ease-out;
+  }
+  .add-col svg{width:15px;height:15px}
+  .add-col:hover{background:var(--surface-emphasis);color:var(--text-primary)}
+
+  /* ===== ⋯ 弹出菜单(columnActionsPopover 风格) ===== */
+  .menu{
+    position:fixed;z-index:50;min-width:170px;padding:8px;
+    background:#010101;border:1px solid var(--stroke-strong);border-radius:10px;
+    box-shadow:0 12px 36px rgba(0,0,0,.7), 0 2px 8px rgba(0,0,0,.5);
+    transform-origin:top right;animation:pop .12s ease-out;
+  }
+  @keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+  .msec{font-size:11px;font-weight:500;color:var(--text-tertiary);padding:3px 9px 5px}
+  .mdiv{height:1px;background:var(--stroke);margin:4px 2px}
+  .mi{
+    display:flex;align-items:center;gap:8px;width:100%;padding:7px 9px;border-radius:6px;
+    font-size:12px;font-weight:500;color:var(--text-secondary);text-align:left;
+    transition:background .1s ease-out,color .1s ease-out;
+  }
+  .mi:hover{background:var(--surface-subtle);color:var(--text-primary)}
+  .mi .lbl{flex:1}
+  .mi .ck{width:13px;height:13px;color:var(--text-primary);flex:none}
+  .mi .ic{width:12px;height:12px;color:var(--text-tertiary);flex:none}
+  .mi .ic svg{width:12px;height:12px}
+  .mi.disabled{opacity:.4;cursor:default}
+  .mi.disabled:hover{background:none;color:var(--text-secondary)}
+  .mi.danger{color:var(--p-high)}
+  .mi.danger .ic{color:var(--p-high)}
+  .mi.danger:hover{background:rgba(255,69,58,.1);color:var(--p-high)}
+</style>
+</head>
+<body>
+<main class="page">
+
+  <!-- 原型备注(非 app UI) -->
+  <section class="notes">
+    <h1>WorkPanel · 看板列排序控件 — 原型 <span class="pill">v1.3 · 2026-11-12</span></h1>
+    <li><b>三列演示:</b>「待办」手动(无任何排序控件) · 「进行中」优先级 ↓ 降序 · 「本周」截止日期 ↑ 升序(生效态:计数右侧类型 chip)。</li>
+    <li><b>类型 chip:</b>排序生效时列头计数右侧显示「依据 ↑/↓」(如「优先级 ↓」);<b>点 chip 本体切换方向</b>(升↔降),<b>点 × 删除</b>清除排序回手动(chip 消失)。× 是清除排序的唯一入口;独立的方向图标钮已移除。</li>
+    <li><b>开排序:</b>唯一入口 = 「⋯」菜单选依据(选即开,自动套常用方向:优先级=降 / 截止日期=升 / 创建时间=降 / 标题=升)。</li>
+    <li><b>「⋯」菜单:</b>排序依据 <b>4 选</b>(优先级/截止日期/创建时间/标题,打勾;<b>无「手动」项</b>)+「方向」小节(升序/降序,手动时置灰);菜单与 chip 文案、卡片顺序双向同步。</li>
+    <li><b>卡片实时重排</b>(#n 为手动拖拽序,平局按它决胜,与现有 ColumnSortOption 行为一致)。「+」「重命名」「删除」为视觉占位。</li>
+  </section>
+
+  <!-- 窗口 -->
+  <div class="window">
+    <div class="titlebar">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="wt">WorkPanel — 看板</div>
+    </div>
+    <div class="board" id="board"></div>
+  </div>
+
+  <!-- 待拍板(非 app UI) -->
+  <section class="notes foot">
+    <h1>待拍板 <span class="pill" style="background:rgba(255,179,64,.16);color:var(--p-medium)">1 点</span>
+      <span class="pill" style="background:rgba(91,193,110,.16);color:var(--tag)">已定 3 点</span></h1>
+    <li>chip 配色:当前交互橙 accentText 前景 + accentSoft 底(一眼可见);备选中性白 textSecondary 前景 + surfaceEmphasis 底(更克制,但标识性弱)。</li>
+    <li style="color:var(--text-tertiary)">已定:控件形态 = 单一类型 chip(「依据 ↑/↓」),无独立方向图标钮;点本体切方向,点 × 删除回手动(唯一清除入口)。</li>
+    <li style="color:var(--text-tertiary)">已定:开排序唯一入口 = 「⋯」菜单选依据,自动套常用方向(优先级=降 / 截止日期=升 / 创建时间=降 / 标题=升)。</li>
+    <li style="color:var(--text-tertiary)">已定:菜单「排序依据」无「手动」项;手动仅经 chip × 达成。</li>
+  </section>
+</main>
+
+<div class="menu" id="menu" hidden></div>
+
+<script>
+/* ============ 数据与状态 ============ */
+const TODAY = '2026-11-12';
+
+const CRITERIA = [
+  {id:'manual',   label:'手动',   natural:null},
+  {id:'priority', label:'优先级', natural:'desc'},
+  {id:'deadline', label:'截止日期', natural:'asc'},
+  {id:'createdAt',label:'创建时间', natural:'desc'},
+  {id:'title',    label:'标题',   natural:'asc'},
+];
+const critLabel = id => CRITERIA.find(c => c.id === id).label;
+
+const state = { cols: [
+  {id:'c1', name:'待办',  criterion:'manual',   direction:'desc', tasks:[
+    {id:'t11', order:1, created:1, title:'整理投资月报',       priority:'medium', deadline:null,          tags:['复盘']},
+    {id:'t12', order:2, created:2, title:'修复 Jira 看板同步', priority:'high',   deadline:'2026-11-14',  tags:[]},
+    {id:'t13', order:3, created:3, title:'回复供应商邮件',     priority:'low',    deadline:null,          tags:[]},
+    {id:'t14', order:4, created:4, title:'预约牙医复查',       priority:'medium', deadline:'2026-11-18',  tags:[]},
+  ]},
+  {id:'c2', name:'进行中', criterion:'priority', direction:'desc', tasks:[
+    {id:'t21', order:1, created:2, title:'重构拖拽排序逻辑',   priority:'high',   deadline:'2026-11-13',  tags:[]},
+    {id:'t22', order:2, created:4, title:'设计评审:列排序控件', priority:'high',  deadline:null,          tags:[]},
+    {id:'t23', order:3, created:1, title:'修复深色模式对比度', priority:'medium', deadline:'2026-11-15',  tags:[]},
+    {id:'t24', order:4, created:3, title:'升级依赖到 Swift 6', priority:'low',    deadline:'2026-11-21',  tags:['杂务']},
+  ]},
+  {id:'c3', name:'本周',  criterion:'deadline',  direction:'asc',  tasks:[
+    {id:'t31', order:1, created:4, title:'发布 2.4 版本',      priority:'high',   deadline:'2026-11-10',  tags:[]},
+    {id:'t32', order:2, created:3, title:'写本周周报',         priority:'medium', deadline:'2026-11-13',  tags:[]},
+    {id:'t33', order:3, created:2, title:'准备季度 OKR 讨论',  priority:'medium', deadline:'2026-11-20',  tags:[]},
+    {id:'t34', order:4, created:1, title:'调研竞品定价',       priority:'low',    deadline:null,          tags:[]},
+  ]},
+]};
+
+/* 排序语义镜像 ColumnSortOption.sorted():主键可随方向翻转,平局一律回退 boardOrder 升序;
+   无截止日期殿后(不随方向翻转)。 */
+function sortTasks(col){
+  const t = [...col.tasks];
+  const dir = col.direction === 'asc' ? 1 : -1;
+  const tie = (a,b) => a.order - b.order;
+  switch(col.criterion){
+    case 'manual': return t.sort(tie);
+    case 'priority':{
+      const r = {high:3, medium:2, low:1};
+      return t.sort((a,b) => (r[a.priority]-r[b.priority]) * dir || tie(a,b));
+    }
+    case 'deadline': return t.sort((a,b) => {
+      const x=a.deadline, y=b.deadline;
+      if(!x && !y) return tie(a,b);
+      if(!x) return 1; if(!y) return -1;              // 无截止殿后
+      return (x<y?-1:x>y?1:0) * dir || tie(a,b);
+    });
+    case 'createdAt': return t.sort((a,b) => (a.created-b.created) * dir || tie(a,b));
+    case 'title': return t.sort((a,b) =>
+      a.title.localeCompare(b.title,'zh',{numeric:true,sensitivity:'base'}) * dir || tie(a,b));
+  }
+}
+
+/* ============ 图标(内联 SVG,lucide 风格) ============ */
+const I = (p, extra='') =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" ${extra}>${p}</svg>`;
+const ICON = {
+  up:     I('<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>'),
+  down:   I('<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>'),
+  check:  I('<path d="M20 6 9 17l-5-5"/>'),
+  x:      I('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+  plus:   I('<path d="M5 12h14"/><path d="M12 5v14"/>'),
+  ellipsis:I('<circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/>'),
+  circle: I('<circle cx="12" cy="12" r="9"/>'),
+  pencil: I('<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>'),
+  trash:  I('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'),
+};
+
+/* ============ 渲染 ============ */
+const board = document.getElementById('board');
+const menu  = document.getElementById('menu');
+let openColId = null, openAnchor = null;
+
+function fmtDL(d){
+  const [,m,day] = d.split('-');
+  return `${+m}月${+day}日`;
+}
+
+/* v1.3 类型 chip:生效时列头唯一排序控件(手动无 chip、无图标钮)。
+   本体 = 切方向(升↔降),× = 清除回手动(唯一清除入口) */
+function sortChipHTML(col){
+  if(col.criterion === 'manual') return '';
+  const arrow = col.direction === 'asc' ? ICON.up : ICON.down;
+  const dirTxt = col.direction === 'asc' ? '升序' : '降序';
+  const tip = `排序:${critLabel(col.criterion)} · ${dirTxt} · 点此处切换方向,点 × 清除`;
+  return `
+  <span class="sort-chip">
+    <button class="sc-toggle" data-chipdir="${col.id}" title="${tip}"
+      aria-label="${tip}">${critLabel(col.criterion)}${arrow}</button>
+    <button class="sc-x" data-chipx="${col.id}" title="清除排序(回到手动)"
+      aria-label="清除排序,回到手动">${ICON.x}</button>
+  </span>`;
+}
+
+function headerHTML(col){
+  return `
+  <div class="col-head">
+    <span class="col-name">${col.name}</span>
+    <span class="col-count">${col.tasks.length}</span>
+    ${sortChipHTML(col)}
+    <span class="head-spacer"></span>
+    <button class="icon-btn" data-fake title="新建任务(原型占位)">${ICON.plus}</button>
+    <button class="ellipsis-pill" data-menu="${col.id}" title="列操作">${ICON.ellipsis}</button>
+  </div>`;
+}
+
+function cardHTML(t){
+  const dl = t.deadline
+    ? `<span class="badge b-dl ${t.deadline < TODAY ? 'past' : ''}">${fmtDL(t.deadline)}</span>` : '';
+  const tags = t.tags.slice(0,2).map(g => `<span class="badge b-tag">#${g}</span>`).join('');
+  return `
+  <div class="card" data-tid="${t.id}">
+    <button class="check" data-fake title="完成(原型占位)">${ICON.circle}</button>
+    <span class="dot ${t.priority}"></span>
+    <div class="body">
+      <div class="t">${t.title}</div>
+      <div class="badges">
+        <span class="badge b-${t.priority}">${{high:'高',medium:'中',low:'低'}[t.priority]}</span>
+        ${dl}${tags}
+      </div>
+    </div>
+    <span class="ord" title="手动拖拽序">#${t.order}</span>
+  </div>`;
+}
+
+function columnHTML(col){
+  return headerHTML(col)
+    + `<div class="cards">${sortTasks(col).map(cardHTML).join('')}</div>`
+    + `<button class="add-task" data-fake>+ 添加任务</button>`;
+}
+
+function renderAll(){
+  board.innerHTML = state.cols.map(c => `
+    <section class="column" data-col="${c.id}">${columnHTML(c)}</section>`).join('')
+    + `<button class="add-col" data-fake title="新建列(原型占位)">${ICON.plus}</button>`;
+}
+
+/* 重排动画(FLIP):记录旧位置 → 重渲染 → 反向位移 → 归位 */
+function updateColumn(col){
+  const el = board.querySelector(`.column[data-col="${col.id}"]`);
+  if(!el) return;
+  const before = new Map(
+    [...el.querySelectorAll('.card')].map(n => [n.dataset.tid, n.getBoundingClientRect()]));
+  el.innerHTML = columnHTML(col);
+  requestAnimationFrame(() => {
+    el.querySelectorAll('.card').forEach(n => {
+      const b = before.get(n.dataset.tid); if(!b) return;
+      const a = n.getBoundingClientRect(), dy = b.top - a.top;
+      if(!dy) return;
+      n.style.transition = 'none';
+      n.style.transform = `translateY(${dy}px)`;
+      requestAnimationFrame(() => {
+        n.style.transition = 'transform .32s cubic-bezier(.2,.8,.2,1)';
+        n.style.transform = '';
+      });
+    });
+  });
+}
+
+/* ============ ⋯ 菜单 ============ */
+function menuHTML(col){
+  const manual = col.criterion === 'manual';
+  // v1.2:「手动」不进菜单——选依据即开排序;手动只能经 chip × 达成
+  const critRows = CRITERIA.filter(c => c.id !== 'manual').map(c => `
+    <button class="mi" data-crit="${c.id}" role="menuitemcheckbox" aria-checked="${col.criterion===c.id}">
+      <span class="lbl">${c.label}</span>
+      ${col.criterion===c.id ? `<span class="ck">${ICON.check}</span>` : ''}
+    </button>`).join('');
+  const dirRows = [['asc','升序',ICON.up],['desc','降序',ICON.down]].map(([v,l,ic]) => `
+    <button class="mi ${manual?'disabled':''}" data-dir="${v}"
+      ${manual?'title="手动排序无方向"':''} role="menuitemcheckbox"
+      aria-checked="${!manual && col.direction===v}">
+      <span class="ic">${ic}</span><span class="lbl">${l}</span>
+      ${!manual && col.direction===v ? `<span class="ck">${ICON.check}</span>` : ''}
+    </button>`).join('');
+  return `
+    <div class="msec">排序</div>${critRows}
+    <div class="mdiv"></div>
+    <div class="msec">方向</div>${dirRows}
+    <div class="mdiv"></div>
+    <button class="mi" data-fake><span class="ic">${ICON.pencil}</span><span class="lbl">重命名</span></button>
+    <div class="mdiv"></div>
+    <button class="mi danger" data-fake><span class="ic">${ICON.trash}</span><span class="lbl">删除</span></button>`;
+}
+
+function openMenu(col, anchor){
+  closeMenu();
+  openColId = col.id; openAnchor = anchor;
+  anchor.classList.add('open');
+  menu.innerHTML = menuHTML(col);
+  menu.hidden = false;
+  const r = anchor.getBoundingClientRect(), m = menu.getBoundingClientRect();
+  let left = Math.max(8, r.right - m.width);
+  let top  = r.bottom + 6;
+  if(top + m.height > innerHeight - 8) top = Math.max(8, r.top - m.height - 6);
+  menu.style.left = left + 'px';
+  menu.style.top  = top + 'px';
+}
+function closeMenu(){
+  if(openAnchor) openAnchor.classList.remove('open');
+  openColId = null; openAnchor = null;
+  menu.hidden = true;
+}
+
+/* ============ 状态变迁 ============ */
+const colById = id => state.cols.find(c => c.id === id);
+
+/* 菜单选依据(v1.3 开排序的唯一入口;菜单无「手动」项,选依据即开排序):
+   自动套该依据常用方向(与 ColumnSortOption 现行行为一致) */
+function setCriterion(col, id){
+  col.criterion = id;
+  col.direction = CRITERIA.find(c => c.id === id).natural;
+  updateColumn(col);
+}
+function setDirection(col, d){
+  if(col.criterion === 'manual') return;
+  col.direction = d;
+  updateColumn(col);
+}
+
+/* chip 本体点击 = 升↔降翻转方向(与菜单「方向」互通) */
+function toggleDirection(col){
+  if(col.criterion === 'manual') return;
+  col.direction = col.direction === 'asc' ? 'desc' : 'asc';
+  updateColumn(col);
+}
+function clearSort(col){
+  if(col.criterion === 'manual') return;
+  col.criterion = 'manual';
+  updateColumn(col);
+}
+
+/* ============ 事件(委托) ============ */
+document.addEventListener('click', e => {
+  const mb  = e.target.closest('[data-menu]');
+  const cr  = e.target.closest('[data-crit]');
+  const dr  = e.target.closest('[data-dir]');
+  const cdx = e.target.closest('[data-chipx]');
+  const cdd = e.target.closest('[data-chipdir]');
+  if(cdx){ clearSort(colById(cdx.dataset.chipx)); return; }
+  if(cdd){ toggleDirection(colById(cdd.dataset.chipdir)); return; }
+  if(cr){ setCriterion(colById(openColId), cr.dataset.crit); closeMenu(); return; }
+  if(dr){ setDirection(colById(openColId), dr.dataset.dir);  closeMenu(); return; }
+  if(mb){ const col = colById(mb.dataset.menu);
+          if(openColId === col.id){ closeMenu(); } else { openMenu(col, mb); }
+          return; }
+  if(e.target.closest('[data-fake]')) return;   // 占位控件:仅视觉
+  if(!menu.hidden && !menu.contains(e.target)) closeMenu();
+});
+document.addEventListener('mousedown', e => {   // 点菜单外关闭(含拖选)
+  if(!menu.hidden && !menu.contains(e.target) && !e.target.closest('[data-menu]')) closeMenu();
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeMenu(); });
+
+renderAll();
+</script>
+</body>
+</html>
