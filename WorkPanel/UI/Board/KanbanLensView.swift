@@ -30,7 +30,8 @@ struct KanbanLensView: View {
 
     private func activeTasks(in column: BoardColumn) -> [TodoTask] {
         column.sort.sorted(
-            filter.apply(tasks).filter { !$0.isCompleted && columnID(for: $0) == column.id })
+            filter.apply(tasks).filter { !$0.isCompleted && columnID(for: $0) == column.id },
+            descending: column.sortDescending)
     }
 
     private var archivedTasks: [TodoTask] {
@@ -82,9 +83,19 @@ struct KanbanLensView: View {
                 Text(column.name)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)   // chip 挤占时列名优雅收缩截断
                 Text("\(items.count)")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.textTertiary)
+                if column.sort != .manual {
+                    SortChip(column: column) {
+                        store.toggleSortDirection(column)
+                        try? context.saveTracking()
+                    } onClear: {
+                        store.clearSort(column)
+                        try? context.saveTracking()
+                    }
+                }
                 Spacer()
                 Button {
                     NotificationCenter.default.post(name: .openTaskEditor,
@@ -194,12 +205,12 @@ struct KanbanLensView: View {
 
     private func columnActionsPopover(for column: BoardColumn) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            // 排序小节:当前生效项打勾,点击切换并落库
+            // 排序小节:当前生效项打勾,点击切换并落库;手动不进菜单——清除唯一入口是列头 chip 的 ×
             Text("排序")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.textTertiary)
                 .padding(.horizontal, 9)
-            ForEach(ColumnSortOption.allCases) { option in
+            ForEach(ColumnSortOption.allCases.filter { $0 != .manual }) { option in
                 Button {
                     store.setSort(column, to: option)
                     try? context.saveTracking()
@@ -220,6 +231,25 @@ struct KanbanLensView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+            }
+            Rectangle().fill(Theme.stroke).frame(height: 1)
+                .padding(.vertical, 4)
+            // 方向小节:当前方向打勾;手动排序无方向,整节置灰
+            Text("方向")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Theme.textTertiary)
+                .padding(.horizontal, 9)
+            sortDirectionRow("升序", systemImage: "arrow.up",
+                             isCurrent: !column.sortDescending,
+                             disabled: column.sort == .manual) {
+                column.sortDescending = false
+                try? context.saveTracking()
+            }
+            sortDirectionRow("降序", systemImage: "arrow.down",
+                             isCurrent: column.sortDescending,
+                             disabled: column.sort == .manual) {
+                column.sortDescending = true
+                try? context.saveTracking()
             }
             Rectangle().fill(Theme.stroke).frame(height: 1)
                 .padding(.vertical, 4)
@@ -262,6 +292,35 @@ struct KanbanLensView: View {
         .disabled(disabled)
     }
 
+    /// 方向小节行:直接写 column.sortDescending + 落库(不走 setSort——它会重置到该依据的常用方向)。
+    private func sortDirectionRow(_ title: String,
+                                  systemImage: String,
+                                  isCurrent: Bool,
+                                  disabled: Bool,
+                                  action: @escaping () -> Void) -> some View {
+        Button {
+            guard !disabled else { return }
+            actionColumnID = nil
+            action()
+        } label: {
+            HStack {
+                Label(title, systemImage: systemImage)
+                Spacer()
+                if isCurrent && !disabled {
+                    Image(systemName: "checkmark")
+                }
+            }
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(disabled ? Theme.textMuted : Theme.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+    }
+
     private func emptyColumnText(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 11, weight: .medium))
@@ -289,5 +348,54 @@ struct KanbanLensView: View {
         try? context.saveTracking()
         scheduler.cancel(for: task)
         if let next { Task { await scheduler.schedule(for: next) } }
+    }
+}
+
+/// 列头排序 chip(排序生效时列头唯一排序控件,手动态不渲染):
+/// 点本体 = 翻转方向,点 × = 清除排序回手动。视觉 = 小号 noirBadge 变体:
+/// accentText 前景 + accentSoft 底的胶囊,10pt rounded bold,hover 提亮。
+private struct SortChip: View {
+    let column: BoardColumn
+    let onToggle: () -> Void
+    let onClear: () -> Void
+
+    @State private var hovering = false
+    @State private var hoveringBody = false
+    @State private var hoveringX = false
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Button(action: onToggle) {
+                HStack(spacing: 3) {
+                    Text(column.sort.label).lineLimit(1)
+                    Image(systemName: column.sortDescending ? "arrow.down" : "arrow.up")
+                        .font(.system(size: 9, weight: .bold))
+                }
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundStyle(hoveringBody ? Color(red: 1, green: 0.70, blue: 0.48) : Theme.accentText)
+                .padding(.horizontal, 2).padding(.vertical, 1)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { hoveringBody = $0 }
+            .help("排序:\(column.sort.label) · \(column.sortDescending ? "降序" : "升序") · 点此处切换方向,点 × 清除")
+
+            Button(action: onClear) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(hoveringX ? Theme.textPrimary : Theme.accentText.opacity(0.68))
+                    .frame(width: 14, height: 14)
+                    .background(Circle().fill(hoveringX ? Color.white.opacity(0.14) : Color.clear))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .onHover { hoveringX = $0 }
+            .help("清除排序(回到手动)")
+        }
+        .padding(.leading, 8).padding(.trailing, 5).padding(.vertical, 2)
+        .background(Capsule(style: .continuous)
+            .fill(hovering ? Theme.accent.opacity(0.26) : Theme.accentSoft))
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovering)
     }
 }
