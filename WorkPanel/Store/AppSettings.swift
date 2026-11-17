@@ -20,6 +20,9 @@ enum AppSettings {
     /// 默认值单一决策点:registerDefaults 与各 getter 回落共用,避免两处字面量漂移。
     static let defaultMCPPort = 8787
     static let defaultJiraDomain = "antalpha.atlassian.net"
+    static let defaultBoardWidthPercent = 0.8
+    /// 看板宽度滑块的取值范围,读取侧与 UI 共用同一决策点。
+    static let boardWidthPercentRange: ClosedRange<Double> = 0.5...1.0
 
     enum Key {
         static let reminderLeadMinutes = "reminderLeadMinutes"
@@ -32,6 +35,7 @@ enum AppSettings {
         static let mcpPort = "mcpPort"
         static let mcpToken = "mcpToken"
         static let boardHeight = "boardHeight"   // Double: 看板像素高度,360 为最小/默认
+        static let boardWidthPercent = "boardWidthPercent"   // Double: 看板宽度占可见屏宽比例,0.8 默认
         static let aiBaseURL = "aiBaseURL"
         static let aiModel = "aiModel"
         static let aiAPIKey = "aiAPIKey"   // 明文,与 mcpToken 一致
@@ -54,6 +58,7 @@ enum AppSettings {
             Key.notificationSound: true,
             Key.defaultPriority: Priority.medium.rawValue,
             Key.boardViewMode: BoardViewMode.kanban.rawValue,
+            Key.boardWidthPercent: defaultBoardWidthPercent,
             Key.mcpEnabled: false,
             Key.mcpPort: defaultMCPPort,
             Key.jiraAutoPullMinutes: 0,
@@ -91,6 +96,12 @@ enum AppSettings {
     static var boardHeight: CGFloat {
         let h = defaults.double(forKey: Key.boardHeight)
         return h == 0 ? 360 : CGFloat(h)
+    }
+    /// 夹取在读取侧兜底:defaults 可能被外部写入越界值;NaN 若直通 NSRect 会崩。
+    static var boardWidthPercent: Double {
+        let p = defaults.double(forKey: Key.boardWidthPercent)
+        guard p.isFinite, p > 0 else { return defaultBoardWidthPercent }
+        return Swift.min(Swift.max(p, boardWidthPercentRange.lowerBound), boardWidthPercentRange.upperBound)
     }
     static var aiBaseURL: String {
         defaults.string(forKey: Key.aiBaseURL) ?? ""

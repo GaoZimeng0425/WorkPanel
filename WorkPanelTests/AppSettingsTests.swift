@@ -55,4 +55,30 @@ struct AppSettingsTests {
         AppSettings.defaults.set(Double(640), forKey: AppSettings.Key.boardHeight)
         #expect(AppSettings.boardHeight == 640)
     }
+
+    @Test func boardWidthDefaultsTo80Percent() {
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.boardWidthPercent) }
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.boardWidthPercent)
+        #expect(AppSettings.boardWidthPercent == 0.8)
+    }
+
+    @Test func boardWidthClampsToValidRange() {
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.boardWidthPercent) }
+        for (stored, expected) in [(0.3, 0.5), (1.8, 1.0)] {
+            AppSettings.defaults.set(stored, forKey: AppSettings.Key.boardWidthPercent)
+            #expect(AppSettings.boardWidthPercent == expected)
+        }
+    }
+
+    @Test func boardWidthNonFiniteFallsBackToDefault() {
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.boardWidthPercent) }
+        AppSettings.defaults.set(Double.nan, forKey: AppSettings.Key.boardWidthPercent)
+        #expect(AppSettings.boardWidthPercent == 0.8)
+    }
+
+    @Test func boardWidthPersistsValidValue() {
+        defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.boardWidthPercent) }
+        AppSettings.defaults.set(0.65, forKey: AppSettings.Key.boardWidthPercent)
+        #expect(AppSettings.boardWidthPercent == 0.65)
+    }
 }
