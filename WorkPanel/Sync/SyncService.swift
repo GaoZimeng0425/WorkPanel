@@ -68,12 +68,21 @@ enum SyncService {
             }
         }
 
-        // 任务
+        // 任务。columnID 完整性在此收口:悬空引用(手编/裁剪过的文件)与删列同款语义迁第一列,
+        // 否则 serialize 丢组 → 全量编辑器保存时任务被 reconcile 静默删。
+        let firstColumnID = colByID.values.min(by: { $0.order < $1.order })?.id
         for dto in doc.tasks {
+            let dangling = dto.columnID.map { colByID[$0] == nil } ?? false
             if let local = taskByID[dto.id] {
-                if dto.modifiedAt > local.modifiedAt { dto.apply(to: local); report.tasksUpdated += 1 }
+                if dto.modifiedAt > local.modifiedAt {
+                    dto.apply(to: local)
+                    if dangling { local.columnID = firstColumnID }
+                    report.tasksUpdated += 1
+                }
             } else {
-                let t = dto.makeModel(); context.insert(t); taskByID[dto.id] = t; report.tasksInserted += 1
+                let t = dto.makeModel()
+                if dangling { t.columnID = firstColumnID }
+                context.insert(t); taskByID[dto.id] = t; report.tasksInserted += 1
             }
         }
 

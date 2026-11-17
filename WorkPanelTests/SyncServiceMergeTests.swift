@@ -52,6 +52,24 @@ struct SyncServiceMergeTests {
         #expect(report.tasksInserted == 0)
     }
 
+    /// 悬空 columnID(手编/裁剪过的文件)必须被校正,否则 serialize 丢组 → 全量编辑器保存时被静默删。
+    @Test func mergeRelocatesTaskWithDanglingColumnIDToFirstColumn() throws {
+        let ctx = try makeContext()
+        let local = BoardColumn(name: "本地列", order: 0)
+        ctx.insert(local)
+        try ctx.save()
+
+        let incoming = TodoTask(title: "悬空任务")
+        incoming.columnID = UUID()   // 不在文档列也不在本地列
+        incoming.modifiedAt = Date(timeIntervalSince1970: 10)
+        let report = try SyncService.merge(docWith(tasks: [SyncTaskDTO(incoming)]),
+                                           into: ctx, includeSettings: false)
+        let all = try ctx.fetch(FetchDescriptor<TodoTask>())
+        #expect(all.count == 1)
+        #expect(all.first?.columnID == local.id)   // 与 BoardStore.delete 同款语义:迁第一列
+        #expect(report.tasksInserted == 1)
+    }
+
     @Test func mergeDoesNotDeleteLocalColumnAbsentFromFile() throws {
         let ctx = try makeContext()
         let local = BoardColumn(name: "本地独有列", order: 0)
