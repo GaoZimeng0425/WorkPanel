@@ -38,8 +38,14 @@ struct JiraPullService {
         report.truncated = remoteResult.truncated
         let remote = remoteResult.issues
 
-        // 本地 jiraKey 索引;同 key 多条取 createdAt 最早为目标
-        let tasks = (try? context.fetch(FetchDescriptor<TodoTask>())) ?? []
+        // 本地 jiraKey 索引;同 key 多条取 createdAt 最早为目标。
+        // fetch 失败若吞成空表,远端 issue 会被当新任务整批插入(fail-open)——中止本轮。
+        let tasks: [TodoTask]
+        do { tasks = try context.fetch(FetchDescriptor<TodoTask>()) }
+        catch {
+            report.failedMessage = "读取本地任务失败:\(error.localizedDescription)"
+            return report
+        }
         var targetByKey: [String: TodoTask] = [:]
         for t in tasks {
             guard let k = t.jiraKey else { continue }
@@ -75,10 +81,11 @@ struct JiraPullService {
             }
         }
 
-        // 二段闭单:已关联、未完成、且不在本次结果的 key(不排除 dismissed,避免数据陈旧)
+        // 二段闭单:已关联、未完成、且不在本次结果的 key(不排除 dismissed,避免数据陈旧);
+        // 单次补查上限 = 一页(pageSize),超出留待下轮
         let absent = targetByKey
             .filter { !$0.value.isCompleted && !remoteKeys.contains($0.key) }
-            .keys.sorted().prefix(50)
+            .keys.sorted().prefix(JiraClient.pageSize)
         if !absent.isEmpty {
             let jql = "issuekey IN (" + absent.joined(separator: ", ") + ")"
             if let statuses = try? await fetcher.search(jql: jql) {
@@ -208,7 +215,9 @@ enum JiraPullRunner {
     static func summary(_ r: JiraPullReport) -> String {
         if let msg = r.failedMessage { return msg }
         var text = "Jira 拉取:新增 \(r.inserted) · 更新 \(r.updated) · 完成 \(r.completed) · 跳过 \(r.skipped)"
-        if r.truncated { text += " · 结果超 250 条已截断" }
+        if r.truncated {
+            text += " · 结果超 \(JiraClient.maxPages * JiraClient.pageSize) 条已截断"
+        }
         return text
     }
 }
