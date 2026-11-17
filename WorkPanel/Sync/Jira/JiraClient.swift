@@ -5,7 +5,10 @@ nonisolated struct JiraIssue: Equatable, Sendable {
     var key: String               // "PROJ-123"
     var summary: String
     var statusName: String        // "待办" / "正在进行" …;状态→列映射用
-    var statusCategoryKey: String // "Done" / "Indeterminate" / "New";缺省为空串(非 Done)
+    var statusCategoryKey: String // "done" / "indeterminate" / "new"(官方小写);缺省为空串(非 done)
+
+    /// 完成判定大小写不敏感:真实 API 返回小写 "done",历史配置/自定义可能大小写不一。
+    var isDone: Bool { statusCategoryKey.lowercased() == "done" }
     var projectKey: String        // "OC"(从 key 前缀解析)
     var priorityName: String?     // priority 缺失时 nil
     var duedateDay: String?       // "2026-11-20" 原样;缺省 nil

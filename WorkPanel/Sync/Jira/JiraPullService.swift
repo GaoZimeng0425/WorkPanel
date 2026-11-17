@@ -52,7 +52,7 @@ struct JiraPullService {
             remoteKeys.insert(issue.key)
             if let local = targetByKey[issue.key] {
                 if local.isCompleted { report.skipped += 1; continue }          // 完成永不回退
-                if issue.statusCategoryKey == "Done" {
+                if issue.isDone {
                     markCompleted(local, now: now)                              // 不动 jiraSyncedAt,保住本地保护
                     report.completed += 1
                     continue
@@ -67,7 +67,7 @@ struct JiraPullService {
                 let t = TodoTask(title: "")
                 apply(issue, to: t, now: now, context: context)
                 t.jiraKey = issue.key
-                if issue.statusCategoryKey == "Done" { markCompleted(t, now: now) }
+                if issue.isDone { markCompleted(t, now: now) }
                 context.insert(t)
                 targetByKey[issue.key] = t
                 report.insertedTitles.append(t.title)
@@ -82,7 +82,7 @@ struct JiraPullService {
         if !absent.isEmpty {
             let jql = "issuekey IN (" + absent.joined(separator: ", ") + ")"
             if let statuses = try? await fetcher.search(jql: jql) {
-                let doneKeys = Set(statuses.issues.filter { $0.statusCategoryKey == "Done" }.map(\.key))
+                let doneKeys = Set(statuses.issues.filter(\.isDone).map(\.key))
                 if !doneKeys.isEmpty {
                     // await 期间用户可能删除过任务:重新 fetch,拿到的都是活实例(已删的自然不在)
                     let live = (try? context.fetch(FetchDescriptor<TodoTask>())) ?? []

@@ -9,7 +9,7 @@ struct JiraClientTests {
 
     private func issueJSON(key: String,
                            summary: String? = "标题",
-                           statusCategory: String? = "Indeterminate",
+                           statusCategory: String? = "indeterminate",
                            statusName: String? = "待办",
                            priority: String? = "Medium",
                            duedate: String? = nil,
@@ -46,7 +46,7 @@ struct JiraClientTests {
         let data = try responseData(issues: [issueJSON(
             key: "PROJ-123",
             summary: "修复登录超时",
-            statusCategory: "Done",
+            statusCategory: "done",
             statusName: "已解决",
             priority: "High",
             duedate: "2026-11-20",
@@ -58,7 +58,7 @@ struct JiraClientTests {
         let i = try #require(issues.first)
         #expect(i.key == "PROJ-123")
         #expect(i.summary == "修复登录超时")
-        #expect(i.statusCategoryKey == "Done")
+        #expect(i.statusCategoryKey == "done")
         #expect(i.statusName == "已解决")
         #expect(i.projectKey == "PROJ")
         #expect(i.priorityName == "High")
@@ -73,7 +73,7 @@ struct JiraClientTests {
         #expect(i.priorityName == nil)
         #expect(i.duedateDay == nil)
         #expect(i.descriptionText == nil)
-        #expect(i.statusCategoryKey == "Indeterminate")   // statusCategory 仍有
+        #expect(i.statusCategoryKey == "indeterminate")   // statusCategory 仍有
     }
 
     @Test func parseExtractsNestedADFText() throws {

@@ -20,7 +20,7 @@ struct JiraPullServiceTests {
 
     private func issue(key: String,
                        summary: String = "远端标题",
-                       statusCategoryKey: String = "Indeterminate",
+                       statusCategoryKey: String = "indeterminate",
                        statusName: String = "待办",
                        priorityName: String? = "Medium",
                        duedateDay: String? = nil,
@@ -113,7 +113,7 @@ struct JiraPullServiceTests {
     @Test func newDoneIssueInsertsAsCompleted() async throws {
         let ctx = try makeContext()
         let now = Date(timeIntervalSince1970: 2000)
-        let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "Done")]]),
+        let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "done")]]),
                            into: ctx, now: now)
         #expect(r == JiraPullReport(inserted: 1, insertedTitles: ["[A-1] 远端标题"]))   // 新建即 Done 也计入
         let t = try #require(try allTasks(ctx).first)
@@ -161,7 +161,7 @@ struct JiraPullServiceTests {
         t.completedAt = Date(timeIntervalSince1970: 500)
         ctx.insert(t)
         try ctx.save()
-        let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "Indeterminate")]]),
+        let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "indeterminate")]]),
                            into: ctx)
         #expect(r == JiraPullReport(skipped: 1))
         #expect(t.isCompleted == true)
@@ -176,7 +176,7 @@ struct JiraPullServiceTests {
         ctx.insert(t)
         try ctx.save()
         let now = Date(timeIntervalSince1970: 2000)
-        let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "Done")]]),
+        let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "done")]]),
                            into: ctx, now: now)
         #expect(r == JiraPullReport(completed: 1))
         #expect(t.isCompleted == true)
@@ -193,7 +193,7 @@ struct JiraPullServiceTests {
         t.modifiedAt = Date(timeIntervalSince1970: 1500)   // 本地改过
         ctx.insert(t)
         try ctx.save()
-        let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "Done")]]),
+        let r = await pull(FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "done")]]),
                            into: ctx, now: Date(timeIntervalSince1970: 2000))
         #expect(r == JiraPullReport(completed: 1))
         #expect(t.isCompleted == true)
@@ -205,10 +205,10 @@ struct JiraPullServiceTests {
 
     @Test func absentClosedIssueGetsCompletedViaSecondQuery() async throws {
         let ctx = try makeContext()
-        let fetcher = FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "Indeterminate")]])
+        let fetcher = FakeFetcher(scripts: [[issue(key: "A-1", statusCategoryKey: "indeterminate")]])
         _ = await pull(fetcher, into: ctx, now: Date(timeIntervalSince1970: 1000))
         // 第二轮:主 JQL 已不返回该 issue(默认 JQL 排除 Done),二段查询返回其 Done 状态
-        await fetcher.schedules([], [issue(key: "A-1", statusCategoryKey: "Done")])
+        await fetcher.schedules([], [issue(key: "A-1", statusCategoryKey: "done")])
         let r = await pull(fetcher, into: ctx, now: Date(timeIntervalSince1970: 2000))
         #expect(r == JiraPullReport(completed: 1))
         let t = try #require(try allTasks(ctx).first)
@@ -292,7 +292,7 @@ struct JiraPullServiceTests {
         t.jiraKey = "A-1"
         ctx.insert(t)
         try ctx.save()
-        let fetcher = FakeFetcher(scripts: [[], [issue(key: "A-1", statusCategoryKey: "Done")]])
+        let fetcher = FakeFetcher(scripts: [[], [issue(key: "A-1", statusCategoryKey: "done")]])
         await fetcher.onSecondCall {
             ctx.delete(t)
             try? ctx.save()
