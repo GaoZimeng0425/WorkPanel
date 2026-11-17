@@ -24,11 +24,32 @@ enum LogService {
         return made
     }
 
+    /// 缓存的 formatter:DateFormatter 构造开销高,且只在 lock 内使用(它非线程安全)。
+    nonisolated private static let formatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        return f
+    }()
+
+    /// 单文件上限(字节);超出即轮转。常驻菜单栏应用只追加不清理会无界增长。
+    nonisolated static let maxLogBytes = 1_000_000
+
+    /// 超限轮转:workpanel.log → workpanel.log.old(旧 .old 直接覆盖丢弃),保留最近一份即可。
+    nonisolated static func rotateIfNeeded(at url: URL, maxBytes: Int = maxLogBytes) {
+        let fm = FileManager.default
+        guard let size = (try? fm.attributesOfItem(atPath: url.path))?[.size] as? NSNumber,
+              size.intValue >= maxBytes else { return }
+        let old = url.appendingPathExtension("old")
+        try? fm.removeItem(at: old)
+        try? fm.moveItem(at: url, to: old)
+    }
+
     nonisolated private static func appendToFile(_ level: String, _ category: String, _ message: String) {
         guard let fileURL else { return }
-        let line = "\(Self.timestamp()) [\(level)] [\(category)] \(message)\n"
-        guard let data = line.data(using: .utf8) else { return }
         lock.lock(); defer { lock.unlock() }
+        let line = "\(formatter.string(from: Date())) [\(level)] [\(category)] \(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        rotateIfNeeded(at: fileURL)
         if let handle = try? FileHandle(forWritingTo: fileURL) {
             defer { try? handle.close() }
             _ = try? handle.seekToEnd()
@@ -36,12 +57,6 @@ enum LogService {
         } else {
             try? data.write(to: fileURL)
         }
-    }
-
-    nonisolated private static func timestamp() -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-        return f.string(from: Date())
     }
 
     nonisolated static func debug(_ message: String, category: String = "App") {
