@@ -2,6 +2,8 @@ import Testing
 import Foundation
 @testable import WorkPanel
 
+/// 多个用例共享 defaults 键(aiBaseURL 等),必须串行避免互踩(同 JiraPullServiceTests)。
+@Suite(.serialized)
 @MainActor
 struct AISettingsTests {
     private func clear() {

@@ -2,6 +2,8 @@ import Testing
 import AppKit
 @testable import WorkPanel
 
+/// 多个用例共享 defaults 键,必须串行避免互踩(同 JiraPullServiceTests)。
+@Suite(.serialized)
 @MainActor
 struct AppSettingsTests {
     @Test func appearanceMapsToNSAppearance() {
@@ -29,6 +31,17 @@ struct AppSettingsTests {
         defer { AppSettings.defaults.removeObject(forKey: AppSettings.Key.mcpPort) }
         AppSettings.defaults.removeObject(forKey: AppSettings.Key.mcpPort)
         #expect(AppSettings.mcpPort == 8787)
+    }
+
+    /// 越界值(UI 键入即落库,不依赖回车校验)必须回落默认,否则 UInt16() 启动即 trap。
+    @Test func mcpPortOutOfRangeFallsBackTo8787() {
+        for bad in [70000, -1, 65536] {
+            AppSettings.defaults.set(bad, forKey: AppSettings.Key.mcpPort)
+            #expect(AppSettings.mcpPort == 8787, "expected fallback for \(bad)")
+        }
+        AppSettings.defaults.set(9000, forKey: AppSettings.Key.mcpPort)
+        #expect(AppSettings.mcpPort == 9000)
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.mcpPort)
     }
 
     @Test func boardHeightDefaultsTo360() {

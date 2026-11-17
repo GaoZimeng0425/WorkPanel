@@ -17,6 +17,10 @@ enum AppSettings {
         return suite
     }()
 
+    /// 默认值单一决策点:registerDefaults 与各 getter 回落共用,避免两处字面量漂移。
+    static let defaultMCPPort = 8787
+    static let defaultJiraDomain = "antalpha.atlassian.net"
+
     enum Key {
         static let reminderLeadMinutes = "reminderLeadMinutes"
         static let appearance = "appearance"
@@ -51,9 +55,9 @@ enum AppSettings {
             Key.defaultPriority: Priority.medium.rawValue,
             Key.boardViewMode: BoardViewMode.kanban.rawValue,
             Key.mcpEnabled: false,
-            Key.mcpPort: 8787,
+            Key.mcpPort: defaultMCPPort,
             Key.jiraAutoPullMinutes: 0,
-            Key.jiraDomain: "antalpha.atlassian.net",
+            Key.jiraDomain: defaultJiraDomain,
             Key.jiraJQL: defaultJQL,
         ])
     }
@@ -73,9 +77,10 @@ enum AppSettings {
     static var mcpEnabled: Bool {
         defaults.bool(forKey: Key.mcpEnabled)
     }
+    /// 端口夹取在读取侧兜底:UI 每键入即落库(不等回车校验),越界值若直通 UInt16() 会启动 trap。
     static var mcpPort: Int {
         let p = defaults.integer(forKey: Key.mcpPort)
-        return p == 0 ? 8787 : p
+        return (1...65535).contains(p) ? p : defaultMCPPort
     }
     static var mcpToken: String {
         if let t = defaults.string(forKey: Key.mcpToken), !t.isEmpty { return t }
@@ -104,7 +109,7 @@ enum AppSettings {
     static let defaultJQL = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
     static var jiraDomain: String {
         let s = defaults.string(forKey: Key.jiraDomain) ?? ""
-        return s.isEmpty ? "antalpha.atlassian.net" : s
+        return s.isEmpty ? defaultJiraDomain : s
     }
     static var jiraEmail: String {
         defaults.string(forKey: Key.jiraEmail) ?? ""
@@ -116,12 +121,12 @@ enum AppSettings {
         let s = defaults.string(forKey: Key.jiraJQL) ?? ""
         return s.isEmpty ? defaultJQL : s
     }
-    /// 三项配置齐全才算可用——Jira 入口的显示门槛。
     /// 自动拉取间隔(分钟);0 = 关闭。
     static var jiraAutoPullMinutes: Int {
         let m = defaults.integer(forKey: Key.jiraAutoPullMinutes)
         return max(0, m)
     }
+    /// 三项配置齐全才算可用——Jira 入口的显示门槛。
     static var jiraConfigured: Bool {
         !jiraDomain.isEmpty && !jiraEmail.isEmpty && !jiraAPIToken.isEmpty
     }
