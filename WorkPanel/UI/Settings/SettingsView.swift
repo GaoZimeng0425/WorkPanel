@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @AppStorage(AppSettings.Key.appearance) private var appearance = Appearance.system.rawValue
     @AppStorage(AppSettings.Key.defaultPriority) private var defaultPriority = Priority.medium.rawValue
+    @AppStorage(AppSettings.Key.boardWidthPercent) private var boardWidthPercent = AppSettings.defaultBoardWidthPercent
     @AppStorage(AppSettings.Key.reminderLeadMinutes) private var leadMinutes = 0
     @AppStorage(AppSettings.Key.notificationSound) private var sound = true
     @AppStorage(AppSettings.Key.mcpEnabled) private var mcpEnabled = false
@@ -342,6 +343,22 @@ struct SettingsView: View {
                     .fixedSize()
                     .onChange(of: appearance) { _, raw in
                         (Appearance(rawValue: raw) ?? .system).apply()
+                    }
+                }
+                divider
+                row("看板宽度", systemImage: "arrow.left.and.right") {
+                    HStack(spacing: 8) {
+                        Slider(value: $boardWidthPercent,
+                               in: AppSettings.boardWidthPercentRange,
+                               step: 0.05)
+                            .frame(width: 150)
+                        Text("\(Int((boardWidthPercent * 100).rounded()))%")
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(Theme.textSecondary)
+                            .frame(width: 42, alignment: .trailing)
+                    }
+                    .onChange(of: boardWidthPercent) { _, _ in
+                        NotificationCenter.default.post(name: .boardWidthChanged, object: nil)
                     }
                 }
                 divider
