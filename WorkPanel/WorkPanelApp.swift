@@ -84,6 +84,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(forName: .mcpSettingsChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.restartMCP() }
         }
+        NotificationCenter.default.addObserver(forName: .boardWidthChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.board.applyWidth() }
+        }
         startOrStopMCP()
         NotificationCenter.default.addObserver(forName: .jiraSettingsChanged, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.restartJiraAutoPull() }

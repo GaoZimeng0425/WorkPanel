@@ -1,6 +1,11 @@
 import AppKit
 import SwiftUI
 
+extension Notification.Name {
+    /// 设置里看板宽度变化:AppDelegate 转给 board.applyWidth()。
+    static let boardWidthChanged = Notification.Name("boardWidthChanged")
+}
+
 /// 无边框面板默认无法成为 key window;子类放开以便接收 Esc / 文本输入。
 final class KeyablePanel: NSPanel, NSWindowDelegate {
     override var canBecomeKey: Bool { true }
@@ -64,6 +69,8 @@ final class ResizeHandleView: NSView {
 final class BoardPanelController: NSObject {
     private var panel: NSPanel?
     private let minHeight: CGFloat = 360
+    /// 看板最小像素宽:再窄列会挤到只能横向滚动,失去一屏总览的意义。
+    private let minWidth: CGFloat = 760
     private let margin: CGFloat = 16
     private let handleStripHeight: CGFloat = 16   // 与 SwiftUI 胶囊条等高(胶囊 4 + 上下 padding 6)
     private var currentHeight: CGFloat = 360
@@ -89,6 +96,16 @@ final class BoardPanelController: NSObject {
         clampHeight(startHeight + (currentMouseY - startMouseY), min: minH, max: maxH)
     }
 
+    /// 由可见屏、高度、宽度百分比算面板 frame:水平居中、底边固定 margin。
+    /// 百分比夹取与最小宽都在这里收口,便于无屏幕环境单测。
+    nonisolated static func boardFrame(visible: NSRect, height: CGFloat, percent: Double,
+                                       minWidth: CGFloat, margin: CGFloat) -> NSRect {
+        let proposed = visible.width * CGFloat(percent)
+        let width = Swift.min(Swift.max(proposed, minWidth), visible.width)
+        return NSRect(x: visible.midX - width / 2, y: visible.minY + margin,
+                      width: width, height: height)
+    }
+
     func show<Content: View>(@ViewBuilder _ content: () -> Content) {
         guard let screen = NSScreen.main else { return }
         currentHeight = Self.clampHeight(AppSettings.boardHeight,
@@ -96,9 +113,9 @@ final class BoardPanelController: NSObject {
         let panel = panel ?? makePanel()
         self.panel = panel
         let visible = screen.visibleFrame
-        let width = visible.width * 0.8
-        let final = NSRect(x: visible.midX - width / 2, y: visible.minY + margin,
-                           width: width, height: currentHeight)
+        let final = Self.boardFrame(visible: visible, height: currentHeight,
+                                    percent: AppSettings.boardWidthPercent,
+                                    minWidth: minWidth, margin: margin)
         let (container, hosting) = makeContent(content(), size: final.size)
         panel.setFrame(final, display: false)
         panel.contentView = container
@@ -171,6 +188,16 @@ final class BoardPanelController: NSObject {
     /// 松手:落定高度并持久化(mouseUp 必触发,持久化可靠)。
     func resizeEnded() {
         UserDefaults.standard.set(Double(currentHeight), forKey: AppSettings.Key.boardHeight)
+    }
+
+    /// 设置里改了宽度且面板可见时即时套用:只改 frame,不碰高度/动画,滑块拖动才跟手。
+    /// 屏幕取面板当前所在屏(副屏打开看板时以副屏为准),而不是 NSScreen.main。
+    func applyWidth() {
+        guard let panel, panel.isVisible, let screen = panel.screen ?? NSScreen.main else { return }
+        panel.setFrame(Self.boardFrame(visible: screen.visibleFrame, height: panel.frame.height,
+                                       percent: AppSettings.boardWidthPercent,
+                                       minWidth: minWidth, margin: margin),
+                       display: true)
     }
 
     private func makePanel() -> NSPanel {
