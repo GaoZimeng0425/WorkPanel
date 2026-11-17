@@ -35,9 +35,6 @@ struct LensCard: View {
     }
 
     private func complete() {
-        let next = todoStore.complete(task)
-        try? context.saveTracking()
-        scheduler.cancel(for: task)
-        if let next { Task { await scheduler.schedule(for: next) } }
+        Task { await todoStore.completeAndReschedule(task, scheduler: scheduler) }
     }
 }

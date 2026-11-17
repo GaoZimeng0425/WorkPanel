@@ -344,10 +344,7 @@ struct KanbanLensView: View {
 
     private func handleArchiveDrop(_ payload: String) {
         guard let task = task(for: payload), !task.isCompleted else { return }
-        let next = todoStore.complete(task)
-        try? context.saveTracking()
-        scheduler.cancel(for: task)
-        if let next { Task { await scheduler.schedule(for: next) } }
+        Task { await todoStore.completeAndReschedule(task, scheduler: scheduler) }
     }
 }
 

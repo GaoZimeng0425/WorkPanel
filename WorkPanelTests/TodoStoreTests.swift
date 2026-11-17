@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import SwiftData
+import UserNotifications
 @testable import WorkPanel
 
 @MainActor
@@ -49,6 +50,31 @@ struct TodoStoreTests {
         let nextDay = calendar.dateComponents([.day], from: next!.deadline!).day
         #expect(nextDay == 8) // +7 days
         #expect(next?.recurrence == .weekly)
+    }
+
+    /// 完成路径单一决策点:完成后旧提醒取消、循环后继排上新提醒(mock center,不碰真通知)。
+    @Test func completeAndRescheduleSwapsReminderToNextOccurrence() async throws {
+        final class MockCenter: NotificationScheduling, @unchecked Sendable {
+            var added: [String] = []
+            var removed: [String] = []
+            func add(_ request: UNNotificationRequest) async throws { added.append(request.identifier) }
+            func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
+                removed.append(contentsOf: identifiers)
+            }
+        }
+        let store = try makeStore()
+        let task = TodoTask(title: "日报",
+                            deadline: Date().addingTimeInterval(86_400),
+                            recurrence: .daily)
+        store.context.insert(task)
+        let mock = MockCenter()
+
+        await store.completeAndReschedule(task, scheduler: ReminderScheduler(center: mock))
+
+        #expect(task.isCompleted)
+        #expect(mock.removed.contains(task.id.uuidString))      // 旧提醒已取消
+        #expect(mock.added.count == 1)                          // 后继排上新提醒
+        #expect(mock.added.first != task.id.uuidString)
     }
 
     @Test func snoozeSetsDate() throws {

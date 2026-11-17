@@ -177,12 +177,7 @@ struct TaskListView: View {
     }
 
     private func complete(_ task: TodoTask) {
-        let next = store.complete(task)
-        try? context.saveTracking()
-        scheduler.cancel(for: task)
-        if let next {
-            Task { await scheduler.schedule(for: next) }
-        }
+        Task { await store.completeAndReschedule(task, scheduler: scheduler) }
     }
 
     private func snooze(_ task: TodoTask, days: Int) {

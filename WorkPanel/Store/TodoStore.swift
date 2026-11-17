@@ -46,6 +46,15 @@ final class TodoStore {
         return follow
     }
 
+    /// 完成路径单一决策点:complete + 落库 + 旧提醒取消 + 循环后继提醒重排。
+    /// 此前列表/看板卡片/归档拖放三处 UI 逐字复制这段序列,改提醒逻辑要同步改三处。
+    func completeAndReschedule(_ task: TodoTask, scheduler: ReminderScheduler) async {
+        let next = complete(task)
+        try? context.saveTracking()
+        scheduler.cancel(for: task)
+        if let next { await scheduler.schedule(for: next) }
+    }
+
     func reopen(_ task: TodoTask) {
         task.isCompleted = false
         task.completedAt = nil
