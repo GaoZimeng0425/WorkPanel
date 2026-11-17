@@ -116,14 +116,13 @@ struct ReviewLensView: View {
         aiLoading = true
         aiSummary = ""
         Task {
+            defer { aiLoading = false }
             do {
                 for try await delta in ai.stream(systemPrompt: prompt.template,
                                                  userContext: AIContext.renderInProgress(tasks)) {
                     aiSummary += delta
                 }
-                aiLoading = false
             } catch {
-                aiLoading = false
                 Notice.show(AIService.message(for: error))
             }
         }
