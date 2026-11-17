@@ -149,6 +149,12 @@ final class MCPToolHandlers {
 
     private func updateTask(_ args: JSONValue) async throws -> String {
         let task = try fetchTask(requireID(args))
+        // validate before mutating(同 createTask 纪律):校验晚于落盘会让被拒的请求部分生效
+        if args.contains("completed"),
+           args["completed"]?.boolValue == nil,
+           args["completed"]?.isNull != true {
+            throw ToolError.badArgument("Invalid 'completed'")
+        }
         if let v = args["title"]?.stringValue { task.title = v }
         if let v = args["notes"]?.stringValue { task.notes = v }
         if args.contains("deadline") {
@@ -176,11 +182,6 @@ final class MCPToolHandlers {
         tags.register(names: task.tags)
         try context.saveTracking()
 
-        if args.contains("completed"),
-           args["completed"]?.boolValue == nil,
-           args["completed"]?.isNull != true {
-            throw ToolError.badArgument("Invalid 'completed'")
-        }
         if args["completed"]?.boolValue == true {
             var next: TodoTask? = nil
             if !task.isCompleted {

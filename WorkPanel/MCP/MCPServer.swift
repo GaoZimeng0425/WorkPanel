@@ -32,7 +32,11 @@ final class MCPServer {
         let params = NWParameters.tcp
         params.requiredInterfaceType = .loopback   // bind 127.0.0.1 only
         guard let nwPort = NWEndpoint.Port(rawValue: port),
-              let l = try? NWListener(using: params, on: nwPort) else { return }
+              let l = try? NWListener(using: params, on: nwPort) else {
+            // 端口被占等绑定失败若静默返回,「开了 MCP 却连不上」无从排查——落日志。
+            LogService.error("MCP server failed to bind port \(port)", category: "MCP")
+            return
+        }
         // Safety: listener runs on queue: .main, so newConnectionHandler fires on the
         // main queue. Use assumeIsolated to re-enter @MainActor without a suspension.
         l.newConnectionHandler = { [weak self] conn in

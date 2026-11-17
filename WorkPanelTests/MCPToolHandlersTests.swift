@@ -165,6 +165,17 @@ struct MCPToolHandlersTests {
         }
     }
 
+    @Test func updateTaskValidatesCompletedBeforeMutating() async throws {
+        let (h, ctx, _) = try makeHandlers()
+        let t = TodoTask(title: "旧标题")
+        ctx.insert(t); try ctx.save()
+        await #expect(throws: ToolError.self) {
+            _ = try await h.call("update_task", ["id": .string(t.id.uuidString),
+                                                 "title": "不该生效", "completed": "yes"])
+        }
+        #expect(t.title == "旧标题")   // 校验先于变更:被拒的请求不得部分落盘
+    }
+
     @Test func updateTaskThrowsWhenMissing() async throws {
         let (h, _, _) = try makeHandlers()
         await #expect(throws: ToolError.self) {
