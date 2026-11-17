@@ -74,7 +74,10 @@ enum Notice {
             p.animator().setFrame(out, display: true)
             p.animator().alphaValue = 0
         }, completionHandler: {
-            MainActor.assumeIsolated { removePanel() }
+            MainActor.assumeIsolated {
+                // 动画期间 show() 可能已换上新面板:只收自己的场,别误伤后来者
+                if panel === p { removePanel() }
+            }
         })
     }
 
