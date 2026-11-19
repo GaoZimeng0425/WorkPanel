@@ -200,8 +200,9 @@ enum JiraPullRunner {
             Notice.show(summary(report))
         }
         if let c = toastContent(report) {
+            // bolt = Jira 的冲刺/闪电品牌意象;真 logo 需 NemoNotch 契约加 img: 前缀(待办)
             NemoNotchToast.show(app: "WorkPanel", title: c.title, body: c.body,
-                                icon: "sf:bell.badge", jumpBundleId: "com.nemo.BrightnessApp.WorkPanel")
+                                icon: "sf:bolt.fill", jumpBundleId: "com.nemo.BrightnessApp.WorkPanel")
         }
         return report
     }
