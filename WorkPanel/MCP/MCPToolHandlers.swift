@@ -19,6 +19,37 @@ struct UpdateResult: Codable {
     let next: TaskDTO?
 }
 
+/// pull_jira 的返回:成功时 pulled=true + 全量计数与新增明细;
+/// 未配置/防重入时 pulled=false + reason(不抛错,让客户端能自解释)。
+struct PullJiraResult: Codable {
+    let pulled: Bool
+    let reason: String?
+    var inserted = 0
+    var insertedTitles: [String] = []
+    var updated = 0
+    var completed = 0
+    var skipped = 0
+    var truncated = false
+    var failedMessage: String?
+
+    init(pulled: Bool, reason: String?) {
+        self.pulled = pulled
+        self.reason = reason
+    }
+
+    init(report: JiraPullReport) {
+        pulled = true
+        reason = nil
+        inserted = report.inserted
+        insertedTitles = report.insertedTitles
+        updated = report.updated
+        completed = report.completed
+        skipped = report.skipped
+        truncated = report.truncated
+        failedMessage = report.failedMessage
+    }
+}
+
 @MainActor
 final class MCPToolHandlers {
     private let context: ModelContext
@@ -26,13 +57,16 @@ final class MCPToolHandlers {
     private let board: BoardStore
     private let tags: TagStore
     private let scheduler: ReminderScheduler
+    private let jiraFetcher: (any JiraFetching)?
 
-    init(context: ModelContext, scheduler: ReminderScheduler = ReminderScheduler()) {
+    init(context: ModelContext, scheduler: ReminderScheduler = ReminderScheduler(),
+         jiraFetcher: (any JiraFetching)? = nil) {
         self.context = context
         self.todo = TodoStore(context: context)
         self.board = BoardStore(context: context)
         self.tags = TagStore(context: context)
         self.scheduler = scheduler
+        self.jiraFetcher = jiraFetcher
     }
 
     /// Routes an MCP tool name + arguments object to its handler, returning a JSON text payload.
@@ -46,6 +80,7 @@ final class MCPToolHandlers {
         case "update_task":  return try await updateTask(args)
         case "delete_task":   return try deleteTask(args)
         case "move_task":     return try moveTask(args)
+        case "pull_jira":     return try await pullJira()
         default: throw ToolError.badArgument("Unknown tool: \(name)")
         }
     }
@@ -199,6 +234,20 @@ final class MCPToolHandlers {
         scheduler.cancel(for: task)
         await scheduler.schedule(for: task)
         return try encode(UpdateResult(task: dto(task), next: nil))
+    }
+
+    /// 触发一次 Jira 拉取(与看板按钮/定时器同走 JiraPullRunner:防重入、日志、Notice 共用)。
+    /// noticeOnSuccess=true 沿手动按钮形态(用户拍板);未配置/已在拉取不抛错,reason 自解释。
+    /// 副作用:测试进程里 Notice 面板会闪现 1.8s(不抢 key、忽略鼠标),见 plan 文档已接受项。
+    private func pullJira() async throws -> String {
+        guard AppSettings.jiraConfigured else {
+            return try encode(PullJiraResult(pulled: false, reason: "Jira not configured"))
+        }
+        guard let report = await JiraPullRunner.pullNow(context: context, noticeOnSuccess: true,
+                                                        fetcher: jiraFetcher) else {
+            return try encode(PullJiraResult(pulled: false, reason: "a pull is already running"))
+        }
+        return try encode(PullJiraResult(report: report))
     }
 
     private func deleteTask(_ args: JSONValue) throws -> String {

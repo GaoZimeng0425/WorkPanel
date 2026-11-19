@@ -176,7 +176,9 @@ enum JiraPullRunner {
 
     /// 返回 nil = 未配置凭据或已有一次拉取在进行。
     /// noticeOnSuccess: 手动拉取展示结果摘要;自动拉取只在失败时打扰。
-    static func pullNow(context: ModelContext, noticeOnSuccess: Bool) async -> JiraPullReport? {
+    /// fetcher: 注入口(测试传脚本化替身);生产 nil → 按设置组装真 JiraClient。
+    static func pullNow(context: ModelContext, noticeOnSuccess: Bool,
+                        fetcher: (any JiraFetching)? = nil) async -> JiraPullReport? {
         guard AppSettings.jiraConfigured else {
             LogService.debug("pullNow skipped: not configured", category: "Jira")
             return nil
@@ -189,9 +191,9 @@ enum JiraPullRunner {
         defer { isRunning = false }
         LogService.debug("pullNow start", category: "Jira")
         let report = await JiraPullService(
-            fetcher: JiraClient(domain: AppSettings.jiraDomain,
-                                email: AppSettings.jiraEmail,
-                                apiToken: AppSettings.jiraAPIToken)
+            fetcher: fetcher ?? JiraClient(domain: AppSettings.jiraDomain,
+                                           email: AppSettings.jiraEmail,
+                                           apiToken: AppSettings.jiraAPIToken)
         ).pull(context: context, dismissedKeys: AppSettings.jiraDismissedKeys)
         LogService.debug("pullNow done: \(summary(report))", category: "Jira")
         if noticeOnSuccess || report.failedMessage != nil {

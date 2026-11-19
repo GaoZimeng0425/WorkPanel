@@ -14,12 +14,20 @@ struct MCPToolHandlersTests {
         func removePendingNotificationRequests(withIdentifiers ids: [String]) { removed.append(contentsOf: ids) }
     }
 
-    private func makeHandlers() throws -> (MCPToolHandlers, ModelContext, MockCenter) {
+    /// pull_jira 用:每次 search 返回同一页脚本(测试只拉一轮,无需多脚本轮转)。
+    actor ScriptedFetcher: JiraFetching {
+        private let issues: [JiraIssue]
+        init(issues: [JiraIssue]) { self.issues = issues }
+        func search(jql: String) async throws -> JiraSearchResult { JiraSearchResult(issues: issues) }
+    }
+
+    private func makeHandlers(jiraFetcher: (any JiraFetching)? = nil) throws -> (MCPToolHandlers, ModelContext, MockCenter) {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: TodoTask.self, BoardColumn.self, DayPlan.self, configurations: config)
         let context = ModelContext(container)
         let mock = MockCenter()
-        let handlers = MCPToolHandlers(context: context, scheduler: ReminderScheduler(center: mock))
+        let handlers = MCPToolHandlers(context: context, scheduler: ReminderScheduler(center: mock),
+                                       jiraFetcher: jiraFetcher)
         return (handlers, context, mock)
     }
 
@@ -156,6 +164,39 @@ struct MCPToolHandlersTests {
         let json = try await h.call("update_task", ["id": .string(t.id.uuidString), "deadline": .null])
         #expect(try decodeUpdatedTask(json).deadline == nil)
         #expect(t.deadline == nil)
+    }
+
+    @Test func pullJiraReturnsReasonWhenUnconfigured() async throws {
+        // 隔离 defaults 里 email/token 为空 → jiraConfigured false
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraEmail)
+        AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraAPIToken)
+        let (h, ctx, _) = try makeHandlers()
+        let json = try await h.call("pull_jira", [:])
+        let r = try JSONDecoder().decode(PullJiraResult.self, from: Data(json.utf8))
+        #expect(r.pulled == false)
+        #expect(r.reason?.contains("not configured") == true)
+        #expect(try ctx.fetch(FetchDescriptor<TodoTask>()).isEmpty)
+    }
+
+    @Test func pullJiraPullsAndReports() async throws {
+        AppSettings.defaults.set("t@e.com", forKey: AppSettings.Key.jiraEmail)
+        AppSettings.defaults.set("tok", forKey: AppSettings.Key.jiraAPIToken)
+        defer {
+            AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraEmail)
+            AppSettings.defaults.removeObject(forKey: AppSettings.Key.jiraAPIToken)
+        }
+        let issue = JiraIssue(key: "AAA-1", summary: "远端标题", statusName: "正在进行",
+                              statusCategoryKey: "indeterminate", projectKey: "AAA",
+                              priorityName: nil, duedateDay: nil, descriptionText: nil, epicName: nil)
+        let (h, ctx, _) = try makeHandlers(jiraFetcher: ScriptedFetcher(issues: [issue]))
+        let json = try await h.call("pull_jira", [:])
+        let r = try JSONDecoder().decode(PullJiraResult.self, from: Data(json.utf8))
+        #expect(r.pulled == true)
+        #expect(r.inserted == 1)
+        #expect(r.insertedTitles == ["[AAA-1] 远端标题"])
+        #expect(r.failedMessage == nil)
+        let all = try ctx.fetch(FetchDescriptor<TodoTask>())
+        #expect(all.count == 1 && all.first?.jiraKey == "AAA-1")
     }
 
     @Test func createTaskRejectsUnknownColumnID() async throws {

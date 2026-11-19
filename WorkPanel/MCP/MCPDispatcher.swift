@@ -117,5 +117,6 @@ struct MCPDispatcher {
         toolEntry("move_task", "Move a task to a board column (columnID:null clears status). Optional index for position.",
              ["id": ["type": "string"], "columnID": ["type": ["string", "null"]], "index": ["type": "integer"]],
              required: ["id"]),
+        toolEntry("pull_jira", "Trigger a Jira pull now (same as the board's pull button). Returns counters plus insertedTitles ([KEY] summary), or {pulled:false, reason} when Jira is not configured or a pull is already running.", [:]),
     ]
 }
